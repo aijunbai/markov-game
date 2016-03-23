@@ -1,0 +1,73 @@
+
+Gurobi 6.5.1 (linux64) logging started Tue Mar 22 13:53:24 2016
+
+
+Gurobi Optimizer version 6.5.1 build v6.5.1rc3 (linux64)
+Copyright (c) 2016, Gurobi Optimization, Inc.
+
+Read LP format model from file /opt/gurobi651/linux64/examples/data/coins.lp
+Reading time = 0.00 seconds
+(null): 4 rows, 9 columns, 16 nonzeros
+Optimize a model with 4 rows, 9 columns and 16 nonzeros
+Coefficient statistics:
+  Matrix range    [6e-02, 7e+00]
+  Objective range [1e-02, 1e+00]
+  Bounds range    [5e+01, 1e+03]
+  RHS range       [0e+00, 0e+00]
+Found heuristic solution: objective -0
+Presolve removed 1 rows and 5 columns
+Presolve time: 0.00s
+Presolved: 3 rows, 4 columns, 9 nonzeros
+Variable types: 0 continuous, 4 integer (0 binary)
+
+Root relaxation: objective 1.134615e+02, 4 iterations, 0.00 seconds
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0  113.46154    0    1   -0.00000  113.46154      -     -    0s
+H    0     0                     113.4500000  113.46154  0.01%     -    0s
+
+Explored 0 nodes (4 simplex iterations) in 0.00 seconds
+Thread count was 4 (of 4 available processors)
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 1.134500000000e+02, best bound 1.134500000000e+02, gap 0.0%
+
+Gurobi 6.5.1 (linux64) logging started Tue Mar 22 13:53:58 2016
+
+
+Gurobi Optimizer version 6.5.1 build v6.5.1rc3 (linux64)
+Copyright (c) 2016, Gurobi Optimization, Inc.
+
+Read LP format model from file /opt/gurobi651/linux64/examples/data/coins.lp
+Reading time = 0.00 seconds
+(null): 4 rows, 9 columns, 16 nonzeros
+Optimize a model with 4 rows, 9 columns and 16 nonzeros
+Coefficient statistics:
+  Matrix range    [6e-02, 7e+00]
+  Objective range [1e-02, 1e+00]
+  Bounds range    [5e+01, 1e+03]
+  RHS range       [0e+00, 0e+00]
+Found heuristic solution: objective -0
+Presolve removed 1 rows and 5 columns
+Presolve time: 0.00s
+Presolved: 3 rows, 4 columns, 9 nonzeros
+Variable types: 0 continuous, 4 integer (0 binary)
+
+Root relaxation: objective 1.134615e+02, 4 iterations, 0.00 seconds
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0  113.46154    0    1   -0.00000  113.46154      -     -    0s
+H    0     0                     113.4500000  113.46154  0.01%     -    0s
+
+Explored 0 nodes (4 simplex iterations) in 0.00 seconds
+Thread count was 4 (of 4 available processors)
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 1.134500000000e+02, best bound 1.134500000000e+02, gap 0.0%
+
+Gurobi 6.5.1 (linux64) logging started Tue Mar 22 13:54:34 2016
+
