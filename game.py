@@ -17,7 +17,7 @@ class Game(object):
     def __init__(self, name, gamma, H):
         self.name = name
         self.gamma = gamma
-        self.H = H
+        self.H = int(H)
 
         self.bimatrix = None
         self.players = set()
@@ -50,18 +50,26 @@ class Game(object):
         plt.title('{}: player {}'.format(self.name, 0))
         plt.xlabel('t')
         plt.ylabel('policy')
-        plt.plot(zip(*policies[0])[0], 'ro-')
+        plt.plot(zip(*policies[0])[0], zip(*policies[0])[1], 'ro-')
         plt.subplot(212)
         plt.title('{}: player {}'.format(self.name, 1))
         plt.xlabel('t')
         plt.ylabel('policy')
-        plt.plot(zip(*policies[1])[0], 'ro-')
+        plt.plot(zip(*policies[1])[0], zip(*policies[1])[1], 'ro-')
         plt.show()
 
 
 class PenaltyShoot(Game):
-    def __init__(self, gamma, H):
-        super(PenaltyShoot, self).__init__('penaltyshoot', gamma, H)
+    def __init__(self, H):
+        super(PenaltyShoot, self).__init__('penaltyshoot', 0.95, H)
         A = np.mat('-1, 1; 1, -1')
         B = np.mat('1, -1; -1, 1')
+        self.update_matrix(A, B)
+
+
+class RockPaperScissors(Game):
+    def __init__(self, H):
+        super(RockPaperScissors, self).__init__('rockpaperscissors', 0.95, H)
+        A = np.mat('0, -1, 1; 1, 0, -1; -1, 1, 0')
+        B = np.mat('0, 1, -1; -1, 0, 1; 1, -1, 0')
         self.update_matrix(A, B)

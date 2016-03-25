@@ -35,7 +35,9 @@ class Agent(object):
         pass
 
     def report(self):
-        pass
+        print 'name:', self.name
+        print 'no:', self.no()
+        print 'strategy:', self.policy()
 
 
 class StationaryAgent(Agent):
@@ -48,10 +50,6 @@ class StationaryAgent(Agent):
 
     def policy(self):
         return self.strategy.pi()
-
-    def report(self):
-        print 'name:', self.name
-        print 'strategy:', self.policy()
 
 class RandomAgent(StationaryAgent):
     def __init__(self, no, game):
@@ -83,8 +81,7 @@ class QAgent(Agent):
         return distri
 
     def report(self):
-        print 'name:', self.name
-        print 'strategy:', self.policy()
+        super(QAgent, self).report()
         print 'Q:', self.Q
 
 class MinimaxQAgent(Agent):
@@ -139,8 +136,7 @@ class MinimaxQAgent(Agent):
         return self.strategy.pi()
 
     def report(self):
-        print 'name:', self.name
-        print 'strategy:', self.strategy
+        super(MinimaxQAgent, self).report()
         print 'val:', self.val(self.strategy.pi())
         print 'Q:', self.Q
 
@@ -158,8 +154,6 @@ class KappaAgent(Agent):  # there should be more updates for each policy, and mo
         self.numstrategies = N
 
         self.strategies = [strategy.Strategy(self.numactions) for _ in range(self.numstrategies)]
-        self.strategies[0] = RandomAgent(no, game).strategy
-
         self.K = {s: np.random.rand(self.opp_numactions) for s in self.strategies}
         self.numupdates = {s: np.zeros(self.opp_numactions) for s in self.strategies}
         self.strategy = None
@@ -183,8 +177,7 @@ class KappaAgent(Agent):  # there should be more updates for each policy, and mo
         return max(self.strategies, key=(lambda x: self.val(x))).pi()
 
     def report(self):
-        print 'name:', self.name
-        print 'strategy:', self.strategy
-        print 'K:', pprint.pformat(self.K)
+        super(KappaAgent, self).report()
         for i, s in enumerate(self.strategies):
             print 'policy:', i, s, self.val(s), sum(self.numupdates[s][o] for o in range(self.opp_numactions))
+        print 'K:', pprint.pformat(self.K)

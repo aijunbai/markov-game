@@ -12,6 +12,7 @@ class Strategy(object):
         self.numactions = n
 
         if pi:
+            assert len(pi) == n
             self._pi = np.array(pi)
         else:
             self._pi = np.random.dirichlet([1] * self.numactions)
@@ -24,6 +25,10 @@ class Strategy(object):
         return self._pi
 
     def update(self, pi):
+        if sum(pi) > 1.0:
+            s = sum(pi)
+            pi = [x / s for x in pi]
+
         self._pi = pi
 
     def __str__(self):
