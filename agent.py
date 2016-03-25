@@ -3,21 +3,27 @@
 from __future__ import division
 from __future__ import with_statement  # for python 2.5
 
-import random
-import utils
-import strategy
 import pprint
-import pulp as lp
+import random
+
 import numpy as np
+import pulp as lp
+
+import strategy
 
 __author__ = 'Aijun Bai'
 
 
 class Agent(object):
-    def __init__(self, no, gamma, n):
-        self.no = no  # player number
-        self.numactions = n
-        self.gamma = gamma
+    def __init__(self, no, game, name):
+        self._no = no  # player number
+        self.name = name
+        self.numactions = game.numactions(self._no)
+        self.opp_numactions = game.numactions(1 - self._no)
+        self.gamma = game.gamma
+
+    def no(self):
+        return self._no
 
     def act(self, exploration):
         pass
@@ -33,9 +39,9 @@ class Agent(object):
 
 
 class StationaryAgent(Agent):
-    def __init__(self, no, gamma, n, pi=None):
-        super(StationaryAgent, self).__init__(no, gamma, n)
-        self.strategy = strategy.Strategy(n, pi)
+    def __init__(self, no, game, pi=None):
+        super(StationaryAgent, self).__init__(no, game, 'stationary')
+        self.strategy = strategy.Strategy(self.numactions, pi)
 
     def act(self, exploration):
         return self.strategy.sample()
@@ -43,14 +49,19 @@ class StationaryAgent(Agent):
     def policy(self):
         return self.strategy.pi()
 
+    def report(self):
+        print 'name:', self.name
+        print 'strategy:', self.policy()
+
 class RandomAgent(StationaryAgent):
-    def __init__(self, no, gamma, n):
-        super(RandomAgent, self).__init__(no, gamma, n, [1.0 / n] * n)
+    def __init__(self, no, game):
+        n = game.numactions(no)
+        super(RandomAgent, self).__init__(no, game, [1.0 / n] * n)
 
 
 class QAgent(Agent):
-    def __init__(self, no, gamma, n, episilon=0.1, alpha=0.01):
-        super(QAgent, self).__init__(no, gamma, n)
+    def __init__(self, no, game, episilon=0.1, alpha=0.01):
+        super(QAgent, self).__init__(no, game, 'q')
 
         self.episilon = episilon
         self.alpha = alpha
@@ -67,17 +78,21 @@ class QAgent(Agent):
         self.Q[a] += self.alpha * (r + self.gamma * max(self.Q[a] for a in range(self.numactions)) - self.Q[a])
 
     def policy(self):
-        distri = [0, 0]
+        distri = [0] * self.numactions
         distri[np.argmax(self.Q)] = 1
         return distri
 
+    def report(self):
+        print 'name:', self.name
+        print 'strategy:', self.policy()
+        print 'Q:', self.Q
+
 class MinimaxQAgent(Agent):
-    def __init__(self, no, gamma, n, m, episilon=0.1, alpha=0.01):
-        super(MinimaxQAgent, self).__init__(no, gamma, n)
+    def __init__(self, no, game, episilon=0.1, alpha=0.01):
+        super(MinimaxQAgent, self).__init__(no, game, 'minimax')
 
         self.episilon = episilon
         self.alpha = alpha
-        self.opp_numactions = m
 
         self.Q = np.random.rand(self.numactions, self.opp_numactions)
         self.strategy = strategy.Strategy(self.numactions)
@@ -124,6 +139,7 @@ class MinimaxQAgent(Agent):
         return self.strategy.pi()
 
     def report(self):
+        print 'name:', self.name
         print 'strategy:', self.strategy
         print 'val:', self.val(self.strategy.pi())
         print 'Q:', self.Q
@@ -131,16 +147,18 @@ class MinimaxQAgent(Agent):
 class KappaAgent(Agent):  # there should be more updates for each policy, and more updates for the set of samples
     # updates for particles -- posterior distributions
     # importance sampling -- I have to work this out!
-    def __init__(self, no, gamma, n, m, N, episilon=0.1, alpha=0.01):
-        super(KappaAgent, self).__init__(no, gamma, n)
+    # a distribution over particles: the probability that the particle to be optimal -- thompson sampling idea
+    # like a bandit problem with thompson sampling
+    # update thompson sampling
+    def __init__(self, no, game, N=10, episilon=0.1, alpha=0.01):
+        super(KappaAgent, self).__init__(no, game, 'kapper')
 
         self.episilon = episilon
         self.alpha = alpha
-        self.opp_numactions = m
         self.numstrategies = N
 
         self.strategies = [strategy.Strategy(self.numactions) for _ in range(self.numstrategies)]
-        self.strategies[0] = RandomAgent(no, gamma, n).strategy
+        self.strategies[0] = RandomAgent(no, game).strategy
 
         self.K = {s: np.random.rand(self.opp_numactions) for s in self.strategies}
         self.numupdates = {s: np.zeros(self.opp_numactions) for s in self.strategies}
@@ -165,6 +183,7 @@ class KappaAgent(Agent):  # there should be more updates for each policy, and mo
         return max(self.strategies, key=(lambda x: self.val(x))).pi()
 
     def report(self):
+        print 'name:', self.name
         print 'strategy:', self.strategy
         print 'K:', pprint.pformat(self.K)
         for i, s in enumerate(self.strategies):

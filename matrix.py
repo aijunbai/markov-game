@@ -9,5 +9,8 @@ class BiMatrix(object):
     def __init__(self, A, B):
         self._bimatrix = {0: A, 1: B}
 
-    def get_reward_for(self, i, a1, a2):
-        return self._bimatrix[i][a1, a2]
+    def get_reward_for(self, i, actions):
+        return self._bimatrix[i][actions[0], actions[1]]
+
+    def numactions(self):
+        return self._bimatrix[0].shape
