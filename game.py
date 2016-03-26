@@ -26,7 +26,7 @@ class Game(object):
         self.players.add(player)
 
     def update_matrix(self, A, B):
-        self.bimatrix = matrix.BiMatrix(A, B)
+        self.bimatrix = matrix.BiMatrix(np.mat(A), np.mat(B))
 
     def numactions(self, a):
         return self.bimatrix.numactions()[a]
@@ -47,11 +47,15 @@ class Game(object):
             player.report()
 
         plt.subplot(211)
+        plt.gca().set_xlim([0, 1])
+        plt.gca().set_ylim([0, 1])
         plt.title('{}: player {}'.format(self.name, 0))
         plt.xlabel('t')
         plt.ylabel('policy')
         plt.plot(zip(*policies[0])[0], zip(*policies[0])[1], 'ro-')
         plt.subplot(212)
+        plt.gca().set_xlim([0, 1])
+        plt.gca().set_ylim([0, 1])
         plt.title('{}: player {}'.format(self.name, 1))
         plt.xlabel('t')
         plt.ylabel('policy')
@@ -62,14 +66,38 @@ class Game(object):
 class PenaltyShoot(Game):
     def __init__(self, H):
         super(PenaltyShoot, self).__init__('penaltyshoot', 0.95, H)
-        A = np.mat('-1, 1; 1, -1')
-        B = np.mat('1, -1; -1, 1')
-        self.update_matrix(A, B)
+        self.update_matrix(
+            '-1, 1; 1, -1',
+            '1, -1; -1, 1')
 
 
 class RockPaperScissors(Game):
     def __init__(self, H):
         super(RockPaperScissors, self).__init__('rockpaperscissors', 0.95, H)
-        A = np.mat('0, -1, 1; 1, 0, -1; -1, 1, 0')
-        B = np.mat('0, 1, -1; -1, 0, 1; 1, -1, 0')
-        self.update_matrix(A, B)
+        self.update_matrix(
+            '0, -1, 1; 1, 0, -1; -1, 1, 0',
+            '0, 1, -1; -1, 0, 1; 1, -1, 0')
+
+
+class PrisonersDilemma(Game):
+    def __init__(self, H):
+        super(PrisonersDilemma, self).__init__('prisonersdilemma', 0.95, H)
+        self.update_matrix(
+            '1, 0; 2, 0',
+            '1, 2; 0, 0')
+
+
+class PeaceWar(Game):
+    def __init__(self, H):
+        super(PeaceWar, self).__init__('peacewar', 0.95, H)
+        self.update_matrix(
+            '2, 0; 3, 1',
+            '2, 3; 0, 1')
+
+
+class Cross(Game):
+    def __init__(self, H):
+        super(Cross, self).__init__('cross', 0.95, H)
+        self.update_matrix(
+            '1, -1; -1, 1',
+            '1, -1; -1, 1')
