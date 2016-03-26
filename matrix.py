@@ -14,3 +14,6 @@ class BiMatrix(object):
 
     def numactions(self):
         return self._bimatrix[0].shape
+
+    def matrix(self):
+        return self._bimatrix
