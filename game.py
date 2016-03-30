@@ -41,20 +41,26 @@ class Game(object):
                 for action in range(self.numactions(player.no())):
                     plt.subplot(self.numactions(player.no()), 1, action + 1)
                     plt.tight_layout()
-                    plt.gca().set_ylim([0, 1])
+                    plt.gca().set_ylim([-0.1, 1.1])
                     plt.title('{}: player {} action {}'.format(self.name, player.no(), action))
                     plt.xlabel('iteration')
                     plt.ylabel('probability')
-                    plt.plot(zip(*policies[player.no()])[action], 'ro-')
+                    plt.grid()
+                    plt.plot(zip(*policies[player.no()])[action], 'r-')
         else:
             for player in self.players:
                 plt.figure(player.no() + 1)
-                plt.gca().set_xlim([0, 1])
-                plt.gca().set_ylim([0, 1])
+                plt.gca().set_xlim([-0.1, 1.1])
+                plt.gca().set_ylim([-0.1, 1.1])
                 plt.title('{}: player {}'.format(self.name, player.no()))
                 plt.xlabel('probability')
                 plt.ylabel('probability')
+                plt.grid()
                 plt.plot(zip(*policies[player.no()])[0], zip(*policies[player.no()])[1], 'ro-')
+
+                circle = plt.Circle((policies[player.no()][-1][0], policies[player.no()][-1][1]), radius=.02, color='b',
+                                    fill=False)
+                plt.gca().add_artist(circle)
 
         plt.show()
 
@@ -74,7 +80,11 @@ class Game(object):
         for player in self.players:
             player.report()
 
-        self.plot(policies, plot_iterations=True)
+        if self.numactions(0) == 3 and self.numactions(1) == 3:
+            self.plot(policies, plot_iterations=True)
+            self.plot(policies, plot_iterations=False)
+        else:
+            self.plot(policies, plot_iterations=True)
 
 
 class PenaltyShoot(Game):

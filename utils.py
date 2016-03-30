@@ -2,11 +2,14 @@
 
 from __future__ import division
 
-from collections import defaultdict
 import inspect
 import itertools
 import pprint
+import random
 import sys
+from collections import defaultdict
+
+import numpy as np
 
 
 __author__ = "Aijun Bai"
@@ -31,6 +34,7 @@ def drange(start=0.0, stop=1.0, step=0.1):
     while r < stop + eps if stop > start else r > stop - eps:
         yield min(max(min(start, stop), r), max(start, stop))
         r += step
+
 
 def pv(*args, **kwargs):
     for name in args:
@@ -60,3 +64,8 @@ def flatten(x):
 
 def forward(*args):
     print '\t'.join(str(i) for i in args)
+
+
+def random_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
