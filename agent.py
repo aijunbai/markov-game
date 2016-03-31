@@ -3,6 +3,7 @@
 from __future__ import division
 from __future__ import with_statement  # for python 2.5
 
+import copy
 import random
 
 import numpy as np
@@ -15,14 +16,11 @@ __author__ = 'Aijun Bai'
 
 class Agent(object):
     def __init__(self, no, game, name):
-        self._no = no  # player number
+        self.no = no  # player number
         self.name = name
         self.game = game
-        self.numactions = game.numactions(self._no)
-        self.opp_numactions = game.numactions(1 - self._no)
-
-    def no(self):
-        return self._no
+        self.numactions = game.numactions(self.no)
+        self.opp_numactions = game.numactions(1 - self.no)
 
     def act(self, exploration):
         pass
@@ -35,7 +33,7 @@ class Agent(object):
 
     def report(self):
         print 'name:', self.name
-        print 'no:', self.no()
+        print 'no:', self.no
         print 'strategy:', self.policy()
 
 
@@ -95,7 +93,7 @@ class MinimaxQAgent(Agent):
 
     def val(self, pi):
         return min(
-            sum(p * q for p, q in zip(pi, (self.Q[i][o] for i in xrange(self.numactions))))
+            sum(p * q for p, q in zip(pi, (self.Q[a, o] for a in xrange(self.numactions))))
             for o in range(self.numactions))
 
     def act(self, exploration):
@@ -118,7 +116,8 @@ class MinimaxQAgent(Agent):
         for i in range(self.numactions):
             prob += pi[i] >= 0
             prob += pi[i] <= 1
-        status = prob.solve(lp.COIN())
+        # status = prob.solve(lp.COIN())
+        status = prob.solve(lp.GUROBI(msg=False))
         if status == 1:
             self.strategy.update([lp.value(pi[i]) for i in range(self.numactions)])
         else:
@@ -129,58 +128,68 @@ class MinimaxQAgent(Agent):
 
     def report(self):
         super(MinimaxQAgent, self).report()
+        eq = RandomAgent(self.no, self.game).strategy.pi()
+        print 'dist:', np.linalg.norm(self.strategy.pi() - eq)
         print 'val:', self.val(self.strategy.pi())
         print 'Q:', self.Q
 
-class KappaAgent(Agent):  # there should be more updates for each policy, and more updates for the set of samples
-    # updates for particles -- posterior distributions
-    # importance sampling -- I have to work this out!
-    # a distribution over particles: the probability that the particle to be optimal -- thompson sampling idea
-    # like a bandit problem with thompson sampling
-    # update thompson sampling
-    # importance sampling idea
-    # x-armed bandits idea
-    # particle filter idea
-    def __init__(self, no, game, N=5, importance_sampling=True, episilon=0.1, alpha=0.01):
+class KappaAgent(Agent):
+    """
+    there should be more updates for each policy, and more updates for the set of samples
+    updates for particles -- posterior distributions
+    importance sampling -- I have to work this out!
+    a distribution over particles: the probability that the particle to be optimal -- thompson sampling idea
+    like a bandit problem with thompson sampling
+    update thompson sampling
+    importance sampling idea => compact representation? propose new strategies?
+    x-armed bandits idea
+    particle filter idea
+    """
+
+    class Particle(object):
+        def __init__(self, agent, weight, policy=None):
+            self.agent = agent
+            self.strategy = strategy.Strategy(self.agent.numactions, policy)
+            self.weight = weight
+            self.K = np.random.rand(self.agent.opp_numactions)
+
+        def val(self):
+            return min(self.K[o] for o in range(self.agent.opp_numactions))
+
+        def clone(self):
+            return copy.deepcopy(self)
+
+    def __init__(self, no, game, N=15, episilon=0.1, alpha=0.01):
         super(KappaAgent, self).__init__(no, game, 'kapper')
 
         self.episilon = episilon
         self.alpha = alpha
         self.numstrategies = N
-
-        self.strategies = [strategy.Strategy(self.numactions) for _ in range(self.numstrategies)]
-        self.K = {s: np.random.rand(self.opp_numactions) for s in self.strategies}
+        self.particles = [KappaAgent.Particle(self, 1.0 / self.numstrategies) for _ in range(self.numstrategies)]
         self.strategy = None
-        self.importance_sampling = importance_sampling
-
-    def val(self, s):
-        return min(self.K[s][o] for o in range(self.opp_numactions))
 
     def act(self, exploration):
         if exploration and random.random() < self.episilon:
-            self.strategy = random.choice(self.strategies)
+            self.strategy = random.choice(self.particles).strategy
         else:
-            self.strategy = max(self.strategies, key=(lambda x: self.val(x)))
+            self.strategy = max(self.particles, key=(lambda x: x.val())).strategy
         return self.strategy.sample()
 
     def update(self, a, o, r):
-        q = r + self.game.gamma * max(self.val(x) for x in self.strategies)
+        q = r + self.game.gamma * max(x.val() for x in self.particles)
 
-        if self.importance_sampling:
-            for s in self.strategies:
-                w = s.pi()[a] / self.strategy.pi()[a]
-                self.K[s][o] += self.alpha * w * (q - self.K[s][o])
-        else:
-            self.K[self.strategy][o] += self.alpha * (q - self.K[self.strategy][o])
+        for p in self.particles:
+            w = p.strategy.pi()[a] / self.strategy.pi()[a]
+            p.K[o] += self.alpha * w * (q - p.K[o])
 
     def policy(self):
-        return max(self.strategies, key=(lambda x: self.val(x))).pi()
+        return max(self.particles, key=(lambda x: x.val())).strategy.pi()
 
     def report(self):
         super(KappaAgent, self).report()
-        eq = RandomAgent(self.no(), self.game).strategy.pi()
-        policies = ({'dist': np.linalg.norm(s.pi() - eq), 'pi': s, 'val': self.val(s)} for i, s in
-                    enumerate(self.strategies))
+        eq = RandomAgent(self.no, self.game).strategy.pi()
+        policies = ({'dist': np.linalg.norm(p.strategy.pi() - eq), 'pi': p.strategy, 'val': p.val()} for i, p in
+                    enumerate(self.particles))
         policies = sorted(policies, key=lambda x: x['dist'])
         for i, p in enumerate(policies):
             print 'policy_{}:'.format(i), p

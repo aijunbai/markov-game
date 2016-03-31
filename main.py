@@ -11,7 +11,7 @@ import utils
 
 __author__ = 'Aijun Bai'
 
-seed = 0
+seed = None
 
 
 def experiment(H):
@@ -21,15 +21,16 @@ def experiment(H):
     # g = game.PeaceWar(H)
     # g = game.CrossStreet(H)
     # g = game.MatchingPennies(H)
-    # g = game.Inspection(H, 2)
+    # g = game.Inspection(H)
+    # g = game.Chicken(H)
 
-    g.add_player(agent.KappaAgent(0, g))
+    g.add_player(agent.KappaAgent(0, g, N=25))
     # g.add_player(agent.QAgent(0, g))
     # g.add_player(agent.MinimaxQAgent(0, g))
     # g.add_player(agent.StationaryAgent(1, g))
     # g.add_player(agent.RandomAgent(1, g))
-    # g.add_player(agent.QAgent(1, g))
-    g.add_player(agent.KappaAgent(1, g))
+    g.add_player(agent.QAgent(1, g))
+    # g.add_player(agent.KappaAgent(1, g))
     # g.add_player(agent.MinimaxQAgent(1, g))
 
     g.simulate()
@@ -37,9 +38,10 @@ def experiment(H):
 
 def main(N):
     for i in xrange(N):
-        experiment(H=math.pow(2, 15))
+        experiment(H=math.pow(2, 12))
 
 if __name__ == '__main__':
-    utils.random_seed(seed)
+    if seed:
+        utils.random_seed(seed)
 
     main(N=1)

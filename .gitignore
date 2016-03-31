@@ -60,3 +60,5 @@ target/
 pycallgraph.png
 .idea/
 log*
+.idea/workspace.xml
+*.pyc
