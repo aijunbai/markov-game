@@ -11,28 +11,28 @@ class Strategy(object):
     def __init__(self, n, pi=None):
         self.numactions = n
 
-        if pi:
-            assert len(pi) == n
-            self._pi = np.array(pi)
+        if pi is not None:
+            self.pi = np.array(pi)
         else:
-            self._pi = np.random.dirichlet([1] * self.numactions)
+            self.pi = np.random.dirichlet([1] * self.numactions)
 
     def sample(self):
-        ret = np.random.multinomial(1, self._pi)
+        ret = np.random.multinomial(1, self.pi)
         return [k for k, v in enumerate(ret) if v > 0][0]
-
-    def pi(self):
-        return self._pi
 
     def update(self, pi):
         if sum(pi) > 1.0:
             s = sum(pi)
             pi = [x / s for x in pi]
 
-        self._pi = pi
+        self.pi = pi
+
+    def add_noise(self):
+        pi = np.random.dirichlet([1] * self.numactions)
+        self.pi += 0.01 * (pi - self.pi)
 
     def __str__(self):
-        return str(self._pi)
+        return str(self.pi)
 
     def __repr__(self):
         return self.__str__()

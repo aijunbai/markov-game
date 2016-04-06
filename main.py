@@ -11,7 +11,7 @@ import utils
 
 __author__ = 'Aijun Bai'
 
-seed = None
+seed = 0
 
 
 def experiment(H):
@@ -24,24 +24,24 @@ def experiment(H):
     # g = game.Inspection(H)
     # g = game.Chicken(H)
 
-    g.add_player(agent.KappaAgent(0, g, N=25))
+    g.add_player(agent.KappaAgent(0, g, N=50))
     # g.add_player(agent.QAgent(0, g))
     # g.add_player(agent.MinimaxQAgent(0, g))
     # g.add_player(agent.StationaryAgent(1, g))
     # g.add_player(agent.RandomAgent(1, g))
-    g.add_player(agent.QAgent(1, g))
+    # g.add_player(agent.QAgent(1, g))
     # g.add_player(agent.KappaAgent(1, g))
-    # g.add_player(agent.MinimaxQAgent(1, g))
+    g.add_player(agent.MinimaxQAgent(1, g))
 
     g.simulate()
 
 
 def main(N):
     for i in xrange(N):
-        experiment(H=math.pow(2, 12))
+        experiment(H=math.pow(2, 10))
 
 if __name__ == '__main__':
-    if seed:
+    if seed is not None:
         utils.random_seed(seed)
 
     main(N=1)

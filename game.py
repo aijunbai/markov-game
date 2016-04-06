@@ -82,6 +82,7 @@ class Game(object):
 
         if self.numactions(0) == 3 and self.numactions(1) == 3:
             self.plot(policies, plot_iterations=False)
+            self.plot(policies, plot_iterations=True)
         else:
             self.plot(policies, plot_iterations=True)
 
