@@ -63,3 +63,4 @@ log*
 .idea/workspace.xml
 *.pyc
 gurobi.log
+*.pyc
