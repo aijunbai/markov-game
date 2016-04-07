@@ -113,10 +113,6 @@ class MinimaxQAgent(Agent):
         for o in range(self.opp_numactions):
             prob += lp.lpSum(pi[i] * self.Q[i, o] for i in range(self.numactions)) >= v
         prob += lp.lpSum(pi[i] for i in range(self.numactions)) == 1
-        for i in range(self.numactions):
-            prob += pi[i] >= 0
-            prob += pi[i] <= 1
-        # status = prob.solve(lp.COIN())
         status = prob.solve(lp.GUROBI(msg=False))
         if status == 1:
             self.strategy.update([lp.value(pi[i]) for i in range(self.numactions)])
@@ -151,12 +147,12 @@ class KappaAgent(Agent):
         return self.strategy.sample()
 
     def update(self, a, o, r):
-        q = r + self.game.gamma * max(x.val() for x in self.particles)
+        k = r + self.game.gamma * max(x.val() for x in self.particles)
 
         total_weight = 0.0
         for p in self.particles:
             w = p.strategy.pi[a] / self.strategy.pi[a]
-            p.K[o] += self.alpha * w * (q - p.K[o])
+            p.K[o] += self.alpha * w * (k - p.K[o])
             total_weight += p.strategy.pi[a]  # weight conditioned on observations?
 
         distribution = [p.strategy.pi[a] / total_weight for p in self.particles]

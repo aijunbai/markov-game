@@ -21,13 +21,13 @@ class Strategy(object):
         return [k for k, v in enumerate(ret) if v > 0][0]
 
     def update(self, pi):
-        if sum(pi) > 1.0:
-            s = sum(pi)
+        s = sum(pi)
+        if s > 1.0:
             pi = [x / s for x in pi]
 
         self.pi = pi
 
-    def add_noise(self):
+    def add_noise(self):  # this is problemetic
         pi = np.random.dirichlet([1] * self.numactions)
         self.pi += 0.01 * (pi - self.pi)
 

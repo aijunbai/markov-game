@@ -3,10 +3,14 @@
 from __future__ import division
 from __future__ import with_statement  # for python 2.5
 
+import numpy as np
+
 __author__ = 'Aijun Bai'
 
 class BiMatrix(object):
-    def __init__(self, A, B):
+    def __init__(self, A=None, B=None):
+        A = np.mat(A)
+        B = -A if B is None else np.mat(B)
         self._bimatrix = {0: A, 1: B}
 
     def get_reward_for(self, i, actions):

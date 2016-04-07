@@ -62,3 +62,4 @@ pycallgraph.png
 log*
 .idea/workspace.xml
 *.pyc
+gurobi.log
