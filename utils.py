@@ -1,16 +1,14 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import division
+
 
 import inspect
-import itertools
 import pprint
 import random
 import sys
 from collections import defaultdict
 
 import numpy as np
-
 
 __author__ = "Aijun Bai"
 __copyright__ = "Copyright 2015, Alibaba Inc."
@@ -46,11 +44,11 @@ def pv(*args, **kwargs):
         iostream = sys.stdout if 'stdout' in kwargs and kwargs['stdout'] \
             else sys.stderr
 
-        print >> iostream, '%s%s: %s' % (prefix, name, pprint.pformat(val))
+        print('%s%s: %s' % (prefix, name, pprint.pformat(val)), file=iostream)
 
 
 def weighted_mean(samples, weights):
-    return sum(x * w for x, w in itertools.izip(samples, weights)) / sum(weights) \
+    return sum(x * w for x, w in zip(samples, weights)) / sum(weights) \
         if sum(weights) > 0.0 else 0.0
 
 
@@ -63,7 +61,7 @@ def flatten(x):
 
 
 def forward(*args):
-    print '\t'.join(str(i) for i in args)
+    print('\t'.join(str(i) for i in args))
 
 
 def random_seed(seed):

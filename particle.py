@@ -1,7 +1,7 @@
 # coding=utf-8
 
-from __future__ import division
-from __future__ import with_statement  # for python 2.5
+
+# for python 2.5
 
 import numpy as np
 
@@ -30,3 +30,9 @@ class Particle(object):
 
     def add_noise(self):
         self.strategy.add_noise()
+
+    def __str__(self):
+        return str(self.strategy)
+
+    def __repr__(self):
+        return self.__str__()

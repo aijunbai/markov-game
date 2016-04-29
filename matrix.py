@@ -1,7 +1,7 @@
 # coding=utf-8
 
-from __future__ import division
-from __future__ import with_statement  # for python 2.5
+
+# for python 2.5
 
 import numpy as np
 

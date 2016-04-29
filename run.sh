@@ -18,5 +18,5 @@
 #===============================================================================
 
 set -o nounset                              # Treat unset variables as an error
-PYTHON=`which python`
+PYTHON=`which python3`
 $PYTHON main.py

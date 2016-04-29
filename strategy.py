@@ -1,7 +1,7 @@
 # coding=utf-8
 
-from __future__ import division
-from __future__ import with_statement  # for python 2.5
+
+# for python 2.5
 
 import numpy as np
 
@@ -28,8 +28,10 @@ class Strategy(object):
         self.pi = pi
 
     def add_noise(self):  # this is problemetic
-        pi = np.random.dirichlet([1] * self.numactions)
-        self.pi += 0.01 * (pi - self.pi)
+        alpha, epsilon = 1000, 0.0001
+        parameters = alpha * self.pi + np.full(self.pi.shape, epsilon)
+        pi = np.random.dirichlet(parameters)
+        self.pi = pi
 
     def __str__(self):
         return str(self.pi)

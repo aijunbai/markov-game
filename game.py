@@ -1,35 +1,30 @@
 # coding=utf-8
 
-from __future__ import division
-from __future__ import with_statement  # for python 2.5
+
+# for python 2.5
 
 import collections
 import pprint
 
 import matplotlib.pyplot as plt
 import numpy as np
+from abc import ABCMeta, abstractmethod
 
 import matrix
 
 __author__ = 'Aijun Bai'
 
 
-class Game(object):
+class Game(object, metaclass=ABCMeta):
     def __init__(self, name, gamma, H):
         self.name = name
         self.gamma = gamma
         self.H = int(H)
-
-        self.bimatrix = None
         self.players = set()
+        self.state = None
 
     def add_player(self, player):
         self.players.add(player)
-
-    def update_matrix(self, A=None, B=None):
-        self.bimatrix = matrix.BiMatrix(A=A, B=B)
-        for p in range(2):
-            print 'matrix[{}]:'.format(p), pprint.pformat(self.bimatrix.matrix()[p])
 
     def numactions(self, a):
         return self.bimatrix.numactions()[a]
@@ -46,7 +41,7 @@ class Game(object):
                     plt.xlabel('iteration')
                     plt.ylabel('probability')
                     plt.grid()
-                    plt.plot(zip(*policies[player.no])[action], 'r-')
+                    plt.plot(list(zip(*policies[player.no]))[action], 'r-')
         else:
             for player in self.players:
                 plt.figure(player.no + 1)
@@ -56,7 +51,7 @@ class Game(object):
                 plt.xlabel('probability')
                 plt.ylabel('probability')
                 plt.grid()
-                plt.plot(zip(*policies[player.no])[0], zip(*policies[player.no])[1], 'ro-')
+                plt.plot(list(zip(*policies[player.no]))[0], list(zip(*policies[player.no]))[1], 'ro-')
 
                 circle = plt.Circle((policies[player.no][-1][0], policies[player.no][-1][1]), radius=.02, color='b',
                                     fill=False)
@@ -64,17 +59,17 @@ class Game(object):
 
         plt.show()
 
-    def simulate(self):
+    def run(self):
         assert len(self.players) == 2
         policies = collections.defaultdict(list)
 
-        for i in xrange(self.H):
+        for i in range(self.H):
             actions = {player.no: player.act(True) for player in self.players}
-            rewards = {j: self.bimatrix.get_reward_for(j, actions) for j in range(2)}
+            rewards = self.simulate(actions)
 
             for player in self.players:
                 j = player.no
-                player.update(actions[j], actions[1 - j], rewards[j])
+                player.update(actions[j], actions[1 - j], rewards[j])  # TODO: add states
                 policies[j].append(player.policy())
 
         for player in self.players:
@@ -82,91 +77,10 @@ class Game(object):
 
         if self.numactions(0) >= 3 and self.numactions(1) >= 3:
             self.plot(policies, plot_iterations=False)
-            self.plot(policies, plot_iterations=True)
+            # self.plot(policies, plot_iterations=True)
         else:
             self.plot(policies, plot_iterations=True)
 
-
-class PenaltyShoot(Game):
-    def __init__(self, H):
-        super(PenaltyShoot, self).__init__('penaltyshoot', 0.95, H)
-        self.update_matrix(
-            A='-1, 1; 1, -1')
-
-
-class RockPaperScissors(Game):
-    def __init__(self, H):
-        super(RockPaperScissors, self).__init__('rockpaperscissors', 0.95, H)
-        self.update_matrix(
-            A='0, -1, 1; 1, 0, -1; -1, 1, 0')
-
-
-class PrisonersDilemma(Game):
-    def __init__(self, H):
-        super(PrisonersDilemma, self).__init__('prisonersdilemma', 0.95, H)
-        self.update_matrix(
-            A='1, 0; 2, 0',
-            B='1, 2; 0, 0')
-
-
-class PeaceWar(Game):
-    def __init__(self, H):
-        super(PeaceWar, self).__init__('peacewar', 0.95, H)
-        self.update_matrix(
-            A='2, 0; 3, 1',
-            B='2, 3; 0, 1')
-
-
-class CrossStreet(Game):
-    def __init__(self, H):
-        super(CrossStreet, self).__init__('crossstreet', 0.95, H)
-        self.update_matrix(
-            A='1, -1; -1, 1',
-            B='1, -1; -1, 1')
-
-
-class MatchingPennies(Game):
-    def __init__(self, H):
-        super(MatchingPennies, self).__init__('matchingpennies', 0.95, H)
-        self.update_matrix(
-            A='1, -1; -1, 1')
-
-
-class Inspection(Game):
-    def __init__(self, H):
-        super(Inspection, self).__init__('inspection', 0.95, H)
-        self.update_matrix(
-            A='-1, 1; 1, -1')
-
-
-class Chicken(Game):
-    def __init__(self, H):
-        super(Chicken, self).__init__('chicken', 0.95, H)
-        self.update_matrix(
-            A='0, 7; 2, 6',
-            B='0, 2; 7, 6')
-
-
-class RockPaperScissorsSpockLizard(Game):
-    def __init__(self, H):
-        super(RockPaperScissorsSpockLizard, self).__init__('rockpaperscissorsspocklizard', 0.95, H)
-        self.update_matrix(
-            A='0, -1, 1, -1, 1;'
-              '1, 0, -1, 1, -1;'
-              '-1, 1, 0, -1, 1;'
-              '1, -1, 1, 0, -1;'
-              '-1, 1, -1, 1, 0')
-
-
-class RandomGame(Game):
-    def __init__(self, H, n, m, zero_sum=True):
-        super(RandomGame, self).__init__('randomgame', 0.95, H)
-        A = RandomGame.random_reward(n, m)
-        B = -A if zero_sum else RandomGame.random_reward(n, m)
-        self.update_matrix(A=A, B=B)
-
-    @staticmethod
-    def random_reward(n, m):
-        high = np.full([n, m], 1.0)
-        low = np.full([n, m], -1.0)
-        return low + (high - low) * np.random.rand(n, m)
+    @abstractmethod
+    def simulate(self, actions):  # state, actions -> state, reward
+        pass
