@@ -1,8 +1,6 @@
 # coding=utf-8
 
 
-# for python 2.5
-
 import collections
 import pprint
 

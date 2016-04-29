@@ -1,8 +1,6 @@
 # coding=utf-8
 
 
-# for python 2.5
-
 import numpy as np
 
 __author__ = 'Aijun Bai'

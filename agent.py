@@ -1,8 +1,5 @@
 # coding=utf-8
 
-
-# for python 2.5
-
 import random
 
 import numpy as np

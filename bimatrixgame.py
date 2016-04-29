@@ -1,8 +1,5 @@
 # coding=utf-8
 
-
-# for python 2.5
-
 import game
 import matrix
 import pprint
