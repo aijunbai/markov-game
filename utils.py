@@ -65,3 +65,7 @@ def forward(*args):
 def random_seed(seed):
     random.seed(seed)
     np.random.seed(seed)
+
+
+def minmax(low, x, high):
+    return min(max(low, x), high);

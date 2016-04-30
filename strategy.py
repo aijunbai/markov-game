@@ -10,7 +10,7 @@ class Strategy(object):
         self.numactions = n
 
         if pi is not None:
-            self.pi = np.array(pi)
+            self.pi = np.copy(pi)
         else:
             self.pi = np.random.dirichlet([1] * self.numactions)
 

@@ -1,8 +1,9 @@
 # coding=utf-8
 
+import pprint
+
 import game
 import matrix
-import pprint
 
 __author__ = 'Aijun Bai'
 
@@ -12,6 +13,9 @@ class BiMatrixGame(game.Game):
         super().__init__(name, gamma, H)
         self.bimatrix = None
         self.state = 0
+
+    def numactions(self, a):
+        return self.bimatrix.numactions()[a]
 
     def update_matrix(self, A=None, B=None):
         self.bimatrix = matrix.BiMatrix(A=A, B=B)

@@ -4,6 +4,7 @@ import math
 
 import agent
 import bimatrixgame
+import littmansoccer
 import utils
 
 __author__ = 'Aijun Bai'
@@ -14,6 +15,7 @@ seed = 0
 def experiment(H):
     # g = game.PenaltyShoot(H)
     g = bimatrixgame.RockPaperScissors(H)
+    g = littmansoccer.LittmanSoccer(H)
     # g = game.RockPaperScissorsSpockLizard(H)
     # g = game.PrisonersDilemma(H)
     # g = game.PeaceWar(H)
@@ -24,14 +26,14 @@ def experiment(H):
     # g = game.RandomGame(H, 2, 2, zero_sum=True)
 
     # g.add_player(agent.KappaAgent(0, g, N=10))
-    # g.add_player(agent.QAgent(0, g))
-    g.add_player(agent.MinimaxQAgent(0, g))
+    g.add_player(agent.QAgent(0, g))
+    # g.add_player(agent.MinimaxQAgent(0, g))
 
     # g.add_player(agent.StationaryAgent(1, g))
-    g.add_player(agent.RandomAgent(1, g))
+    # g.add_player(agent.RandomAgent(1, g))
     # g.add_player(agent.QAgent(1, g))
     # g.add_player(agent.KappaAgent(1, g))
-    # g.add_player(agent.MinimaxQAgent(1, g))
+    g.add_player(agent.MinimaxQAgent(1, g))
 
     g.run()
 

@@ -14,7 +14,7 @@ class Particle(object):
         self.strategy = strategy.Strategy(self.agent.numactions, policy)
 
         if K is not None:
-            self.K = np.array(K)
+            self.K = np.copy(K)
         else:
             self.K = np.random.rand(self.agent.opp_numactions)
 
