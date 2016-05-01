@@ -7,12 +7,10 @@ __author__ = 'Aijun Bai'
 
 class Strategy(object):
     def __init__(self, n, pi=None):
-        self.numactions = n
-
         if pi is not None:
             self.pi = np.copy(pi)
         else:
-            self.pi = np.random.dirichlet([1] * self.numactions)
+            self.pi = np.random.dirichlet([1] * n)
 
     def sample(self):
         ret = np.random.multinomial(1, self.pi)

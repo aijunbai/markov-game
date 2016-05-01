@@ -64,3 +64,4 @@ log*
 *.pyc
 gurobi.log
 *.pyc
+*.pickle

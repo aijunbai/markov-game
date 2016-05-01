@@ -8,8 +8,12 @@ __author__ = 'Aijun Bai'
 
 
 class Simulator(object, metaclass=ABCMeta):
-    def __init__(self, numactions):
-        self.numactions = numactions
+    def __init__(self, game):
+        self.game = game
+
+    @abstractmethod
+    def numactions(self, no):
+        pass
 
     @abstractmethod
     def step(self, state, actions, verbose=False):
