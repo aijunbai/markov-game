@@ -21,13 +21,14 @@ class Game(object, metaclass=ABCMeta):
     def numactions(self, no):
         pass
 
-    def run(self):
+    def run(self, verbose=False):
         assert len(self.players) == 2
 
         for i in range(self.H):
-            print('step: {}'.format(i))
+            if verbose:
+                print('step: {}'.format(i))
             actions = {player.no: player.act(self.state, True) for player in self.players}
-            next_state, rewards = self.simulate(actions, verbose=True)
+            next_state, rewards = self.simulate(actions, verbose=verbose)
 
             for player in self.players:
                 j = player.no

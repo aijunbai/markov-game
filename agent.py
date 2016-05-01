@@ -38,9 +38,6 @@ class StationaryAgent(Agent):
     def act(self, s, exploration):
         return self.strategy.sample()
 
-    def policy(self, s):
-        return self.strategy.pi
-
     def update(self, s, a, o, r, ns):
         pass
 
@@ -51,17 +48,15 @@ class RandomAgent(StationaryAgent):
 
 
 class QAgent(Agent):
-    def __init__(self, no, game, episilon=0.1, alpha=0.01):
+    def __init__(self, no, game, episilon=0.2, alpha=1.0):
         super().__init__(no, game, 'q')
 
         self.episilon = episilon
         self.alpha = alpha
-
         self.Q = collections.defaultdict(lambda: np.random.rand(self.numactions))
 
-    def __del__(self):
-        utils.pv('self.Q')
-        utils.pv('len(self.Q)')
+    # def __del__(self):
+    #     utils.pv('self.Q')
 
     def act(self, s, exploration):
         if exploration and random.random() < self.episilon:
@@ -72,10 +67,11 @@ class QAgent(Agent):
     def update(self, s, a, o, r, ns):
         val = max(self.Q[ns][a] for a in range(self.numactions))
         self.Q[s][a] += self.alpha * (r + self.game.gamma * val - self.Q[s][a])
+        self.alpha *= 0.9999954
 
 
 class MinimaxQAgent(Agent):
-    def __init__(self, no, game, episilon=0.1, alpha=0.01):
+    def __init__(self, no, game, episilon=0.2, alpha=1.0):
         super().__init__(no, game, 'minimax')
 
         self.episilon = episilon
@@ -83,6 +79,10 @@ class MinimaxQAgent(Agent):
 
         self.Q = collections.defaultdict(lambda: np.random.rand(self.numactions, self.opp_numactions))
         self.strategy = collections.defaultdict(lambda: strategy.Strategy(self.numactions))
+
+    # def __del__(self):
+    #     utils.pv('self.Q')
+    #     utils.pv('self.strategy')
 
     def val(self, s):
         return min(
@@ -99,6 +99,7 @@ class MinimaxQAgent(Agent):
     def update(self, s, a, o, r, ns):
         val = self.val(ns)
         self.Q[s][a, o] += self.alpha * (r + self.game.gamma * val - self.Q[s][a, o])
+        self.alpha *= 0.9999954
 
         # update strategy
         v = lp.LpVariable('v')
@@ -108,7 +109,8 @@ class MinimaxQAgent(Agent):
         for o in range(self.opp_numactions):
             prob += lp.lpSum(pi[a] * self.Q[s][a, o] for a in range(self.numactions)) >= v
         prob += lp.lpSum(pi[a] for a in range(self.numactions)) == 1
-        status = prob.solve()
+        status = prob.solve(lp.GLPK_CMD(msg=0))
+
         if status == 1:
             self.strategy[s].update([lp.value(pi[a]) for a in range(self.numactions)])
         else:

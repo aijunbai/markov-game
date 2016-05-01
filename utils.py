@@ -1,20 +1,13 @@
 # -*- coding: utf-8 -*-
 
-import inspect
-import pprint
-import random
-import sys
-from collections import defaultdict
-
-import numpy as np
-
 __author__ = "Aijun Bai"
 __copyright__ = "Copyright 2015, Alibaba Inc."
 __email__ = "aijunbai@gmail.com"
 
 
 def makehash():
-    return defaultdict(makehash)
+    import collections
+    return collections.defaultdict(makehash)
 
 
 def chain_files(file_names):
@@ -33,6 +26,10 @@ def drange(start=0.0, stop=1.0, step=0.1):
 
 
 def pv(*args, **kwargs):
+    import sys
+    import inspect
+    import pprint
+
     for name in args:
         record = inspect.getouterframes(inspect.currentframe())[1]
         frame = record[0]
@@ -63,9 +60,26 @@ def forward(*args):
 
 
 def random_seed(seed):
+    import random
+    import numpy as np
+
     random.seed(seed)
     np.random.seed(seed)
 
 
 def minmax(low, x, high):
-    return min(max(low, x), high);
+    return min(max(low, x), high)
+
+def timeit(func):
+    import functools
+
+    @functools.wraps(func)
+    def newfunc(*args, **kwargs):
+        import time
+
+        startTime = time.time()
+        func(*args, **kwargs)
+        elapsedTime = time.time() - startTime
+        print('function [{}] finished in {} ms'.format(
+            func.__name__, int(elapsedTime * 1000)))
+    return newfunc

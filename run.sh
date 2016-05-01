@@ -19,4 +19,4 @@
 
 set -o nounset                              # Treat unset variables as an error
 PYTHON=`which python3`
-$PYTHON main.py
+time $PYTHON main.py
