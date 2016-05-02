@@ -2,7 +2,7 @@
 
 set -o nounset                              # Treat unset variables as an error
 
-PYTHON=`which python3`
+PYTHON=`which python`
 PROF="main.prof"
 
 profile() {

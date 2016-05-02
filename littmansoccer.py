@@ -1,12 +1,15 @@
 # coding=utf-8
 
-import random
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
 
 import numpy as np
+import random
+
+from builtins import *
 
 import markovgame
 import utils
-import collections
 
 __author__ = 'Aijun Bai'
 
@@ -54,9 +57,6 @@ class Simulator(markovgame.Simulator):
         self.random_threshold = 0.1
         self.episodes = 1
         self.wins = np.ones(2)
-
-    def __del__(self):
-        self.report()
 
     def numactions(self, no):
         return 5

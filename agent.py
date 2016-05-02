@@ -1,22 +1,32 @@
 # coding=utf-8
 
-import random
-
-from functools import partial
-from collections import defaultdict
-from abc import ABCMeta, abstractmethod
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
 
 import numpy as np
-import pulp as lp
+import random
+import sys
+from abc import ABCMeta, abstractmethod
+from collections import defaultdict
+from functools import partial
+
+from builtins import *
+
+if sys.version_info >= (3, 0):
+    from pulp import *
+else:
+    from pulp import *
+    from gurobipy import *
 import pickle
 
 import strategy
-import utils
 
 __author__ = 'Aijun Bai'
 
 
-class Agent(object, metaclass=ABCMeta):
+class Agent(object):
+    __metaclass__ = ABCMeta
+
     def __init__(self, no, game, name, train=True):
         self.no = no  # player number
         self.name = name
@@ -26,7 +36,7 @@ class Agent(object, metaclass=ABCMeta):
         self.opp_numactions = game.numactions(1 - self.no)
 
     @abstractmethod
-    def __del__(self):
+    def done(self):
         print('agent {}_{} done...'.format(self.name, self.no))
 
     @abstractmethod
@@ -46,8 +56,8 @@ class StationaryAgent(Agent):
         super().__init__(no, game, 'stationary', train=False)
         self.strategy = strategy.Strategy(self.numactions, pi=pi)
 
-    def __del__(self):
-        super().__del__()
+    def done(self):
+        super().done()
 
     def act(self, s):
         return self.strategy.sample()
@@ -74,8 +84,8 @@ class QAgent(Agent):
             with open(self.pickle_name(), 'rb') as f:
                 self.Q = pickle.load(f)
 
-    def __del__(self):
-        super().__del__()
+    def done(self):
+        super().done()
         if self.train:
             with open(self.pickle_name(), 'wb') as f:
                 pickle.dump(self.Q, f)
@@ -87,8 +97,7 @@ class QAgent(Agent):
             return np.argmax(self.Q[s])
 
     def update(self, s, a, o, r, ns):
-        val = np.max(self.Q[ns])
-        self.Q[s][a] += self.alpha * (r + self.game.gamma * val - self.Q[s][a])
+        self.Q[s][a] += self.alpha * (r + self.game.gamma * np.max(self.Q[ns]) - self.Q[s][a])
         self.alpha *= 0.9999954
 
 
@@ -106,8 +115,8 @@ class MinimaxQAgent(Agent):
             with open(self.pickle_name(), 'rb') as f:
                 self.Q, self.strategy = pickle.load(f)
 
-    def __del__(self):
-        super().__del__()
+    def done(self):
+        super().done()
 
         if self.train:
             with open(self.pickle_name(), 'wb') as f:
@@ -123,25 +132,52 @@ class MinimaxQAgent(Agent):
         else:
             return self.strategy[s].sample()
 
+    def update_strategy(self, s, solver='gurobi'):
+        if solver == 'gurobi':
+            m = Model('LP')
+            m.setParam('OutputFlag', 0)
+            v = m.addVar(name='v')
+            pi = {}
+            for a in range(self.numactions):
+                pi[a] = m.addVar(lb=0.0, ub=1.0, name='pi_{}'.format(a))
+            m.update()
+            m.setObjective(v, sense=GRB.MAXIMIZE)
+            for o in range(self.opp_numactions):
+                m.addConstr(
+                    quicksum(pi[a] * self.Q[s][a, o] for a in range(self.numactions)) >= v,
+                    name='c_o{}'.format(o))
+            m.addConstr(quicksum(pi[a] for a in range(self.numactions)) == 1, name='c_pi')
+            m.optimize()
+            if m.Status == GRB.OPTIMAL:
+                return [pi[a].X for a in range(self.numactions)]
+        else:
+            v = LpVariable('v')
+            pi = LpVariable.dicts('pi', list(range(self.numactions)), 0, 1)
+            prob = LpProblem('LP', LpMaximize)
+            prob += v
+            for o in range(self.opp_numactions):
+                prob += lpSum(pi[a] * self.Q[s][a, o] for a in range(self.numactions)) >= v
+            prob += lpSum(pi[a] for a in range(self.numactions)) == 1
+            status = prob.solve(GLPK_CMD(msg=0))
+            if status == 1:
+                return [value(pi[a]) for a in range(self.numactions)]
+
+        return None
+
     def update(self, s, a, o, r, ns):
-        val = self.val(ns)
-        self.Q[s][a, o] += self.alpha * (r + self.game.gamma * val - self.Q[s][a, o])
+        self.Q[s][a, o] += self.alpha * (r + self.game.gamma * self.val(ns) - self.Q[s][a, o])
         self.alpha *= 0.9999954
 
-        # update strategy
-        v = lp.LpVariable('v')
-        pi = lp.LpVariable.dicts('pi', list(range(self.numactions)), 0, 1)
-        prob = lp.LpProblem('maximizing', lp.LpMaximize)
-        prob += v
-        for o in range(self.opp_numactions):
-            prob += lp.lpSum(pi[a] * self.Q[s][a, o] for a in range(self.numactions)) >= v
-        prob += lp.lpSum(pi[a] for a in range(self.numactions)) == 1
-        status = prob.solve(lp.GLPK_CMD(msg=0))
-
-        if status == 1:
-            self.strategy[s].update([lp.value(pi[a]) for a in range(self.numactions)])
+        if sys.version_info >= (3, 0):
+            pi = self.update_strategy(s, 'pulp')
         else:
-            assert 0
+            # assert np.allclose(self.update_strategy(s, 'gurobi'), self.update_strategy(s, 'pulp'))
+            pi = self.update_strategy(s, 'gurobi')
+            if pi is None:
+                pi = self.update_strategy(s, 'pulp')
+
+        self.strategy[s].update(pi)
+
 
 # class KappaAgent(Agent):
 #     def __init__(self, no, game, N=25, episilon=0.1, alpha=0.01):

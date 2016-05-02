@@ -1,7 +1,11 @@
 # coding=utf-8
 
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
 
 import numpy as np
+
+from builtins import *
 
 import strategy
 
@@ -14,7 +18,7 @@ class Particle(object):
         self.strategy = strategy.Strategy(self.agent.numactions, policy)
 
         if K is not None:
-            self.K = np.copy(K)
+            self.K = np.array(K)
         else:
             self.K = np.random.rand(self.agent.opp_numactions)
 

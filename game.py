@@ -1,13 +1,21 @@
 # coding=utf-8
 
-import utils
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
+
 import numpy as np
 from abc import ABCMeta, abstractmethod
+
+from builtins import *
+
+import utils
 
 __author__ = 'Aijun Bai'
 
 
-class Game(object, metaclass=ABCMeta):
+class Game(object):
+    __metaclass__ = ABCMeta
+
     def __init__(self, name, gamma, H):
         self.name = name
         self.gamma = gamma
@@ -45,6 +53,9 @@ class Game(object, metaclass=ABCMeta):
                         self.state, actions[j], actions[1 - j], rewards[j], next_state)
 
             self.state = next_state
+
+        for player in self.players.values():
+            player.done()
 
     @abstractmethod
     def simulate(self, actions, verbose=False):  # state, actions -> state, reward

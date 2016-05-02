@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
+
+from builtins import *
+
 __author__ = "Aijun Bai"
 __copyright__ = "Copyright 2015, Alibaba Inc."
 __email__ = "aijunbai@gmail.com"

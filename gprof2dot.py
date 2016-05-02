@@ -20,18 +20,16 @@
 
 __author__ = "Jose Fonseca et al"
 
-
-import sys
+import collections
+import json
+import locale
 import math
+import optparse
 import os.path
 import re
+import sys
 import textwrap
-import optparse
 import xml.parsers.expat
-import collections
-import locale
-import json
-
 
 # Python 2.x/3.x compatibility
 if sys.version_info[0] >= 3:
@@ -378,7 +376,7 @@ class Profile(Object):
                 return f
         return False
 
-    class _TarjanData:
+    class _TarjanData(object):
         def __init__(self, order):
             self.order = order
             self.lowlink = order
@@ -731,7 +729,7 @@ class Profile(Object):
 # Parsers
 
 
-class Struct:
+class Struct(object):
     """Masquerade a dictionary with a structure-like behavior."""
 
     def __init__(self, attrs = None):
@@ -768,7 +766,7 @@ class ParseError(Exception):
         return '%s: %r' % (self.msg, self.line)
 
 
-class Parser:
+class Parser(object):
     """Parser interface."""
 
     stdinInput = True
@@ -898,7 +896,7 @@ class LineParser(Parser):
 XML_ELEMENT_START, XML_ELEMENT_END, XML_CHARACTER_DATA, XML_EOF = range(4)
 
 
-class XmlToken:
+class XmlToken(object):
 
     def __init__(self, type, name_or_data, attrs = None, line = None, column = None):
         assert type in (XML_ELEMENT_START, XML_ELEMENT_END, XML_CHARACTER_DATA, XML_EOF)
@@ -920,7 +918,7 @@ class XmlToken:
         assert 0
 
 
-class XmlTokenizer:
+class XmlTokenizer(object):
     """Expat based XML tokenizer."""
 
     def __init__(self, fp, skip_ws = True):
@@ -2612,7 +2610,7 @@ class SleepyParser(Parser):
         return profile
 
 
-class PstatsParser:
+class PstatsParser(object):
     """Parser python profiling statistics saved with te pstats module."""
 
     stdinInput = False
@@ -2714,7 +2712,7 @@ formats = {
 # Output
 
 
-class Theme:
+class Theme(object):
 
     def __init__(self, 
             bgcolor = (0.0, 0.0, 1.0),
@@ -2901,7 +2899,7 @@ def sorted_iteritems(d):
         yield key, value
 
 
-class DotWriter:
+class DotWriter(object):
     """Writer for the DOT language.
 
     See also:

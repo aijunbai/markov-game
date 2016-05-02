@@ -1,14 +1,18 @@
 # coding=utf-8
 
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
 
 import numpy as np
+
+from builtins import *
 
 __author__ = 'Aijun Bai'
 
 class Strategy(object):
     def __init__(self, n, pi=None):
         if pi is not None:
-            self.pi = np.copy(pi)
+            self.pi = np.array(pi)
         else:
             self.pi = np.random.dirichlet([1] * n)
 
@@ -21,7 +25,7 @@ class Strategy(object):
         if s > 1.0:
             pi = [x / s for x in pi]
 
-        self.pi = pi
+        self.pi = np.array(pi)
 
     def add_noise(self):  # this is problemetic
         alpha, epsilon = 1000, 0.0001

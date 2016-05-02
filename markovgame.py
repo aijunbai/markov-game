@@ -1,15 +1,22 @@
 # coding=utf-8
 
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
+
 from abc import ABCMeta, abstractmethod
+
+from builtins import *
 
 import game
 
 __author__ = 'Aijun Bai'
 
 
-class Simulator(object, metaclass=ABCMeta):
-    def __init__(self, game):
-        self.game = game
+class Simulator(object):
+    __metaclass__ = ABCMeta
+
+    def __init__(self, g):
+        self.game = g
 
     @abstractmethod
     def numactions(self, no):
@@ -24,7 +31,9 @@ class Simulator(object, metaclass=ABCMeta):
         pass
 
 
-class MarkovGame(game.Game, metaclass=ABCMeta):
+class MarkovGame(game.Game):
+    __metaclass__ = ABCMeta
+
     def __init__(self, name, simulator, gamma, H):
         super().__init__(name, gamma, H)
         self.simulator = simulator
