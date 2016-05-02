@@ -2,11 +2,9 @@
 
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
-
-from abc import ABCMeta, abstractmethod
-
 from builtins import *
 
+from abc import ABCMeta, abstractmethod
 import game
 
 __author__ = 'Aijun Bai'

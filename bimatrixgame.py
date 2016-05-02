@@ -2,12 +2,10 @@
 
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
-
-import pprint
-
-import numpy as np
 from builtins import *
 
+import pprint
+import numpy as np
 import game
 import matrix
 

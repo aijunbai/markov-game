@@ -2,26 +2,43 @@
 
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
+from builtins import *
 
 import random
+import sys
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
+from numba import jit
 from functools import partial
 
 import numpy as np
-from builtins import *
 
 if sys.version_info >= (3, 0):
     from pulp import *
 else:
     from pulp import *
-    from gurobipy import *
+    try:
+        from gurobipy import *
+    except:
+        pass
 import pickle
 
 import strategy
 
 __author__ = 'Aijun Bai'
 
+
+@jit(nopython=True)
+def jit_q_update(Q1, Q2, a, r, alpha, gamma):
+    Q1[a] += alpha * (r + gamma * np.max(Q2) - Q1[a])
+
+@jit(nopython=True)
+def jit_minimax_dot(pi, Q, o):
+    return np.dot(pi, Q[:, o])
+
+@jit(nopython=True)
+def jit_minimax_update(Q, v, a, o, r, alpha, gamma):
+    Q[a, o] += alpha * (r + gamma * v - Q[a, o])
 
 class Agent(object):
     __metaclass__ = ABCMeta
@@ -96,7 +113,7 @@ class QAgent(Agent):
             return np.argmax(self.Q[s])
 
     def update(self, s, a, o, r, ns):
-        self.Q[s][a] += self.alpha * (r + self.game.gamma * np.max(self.Q[ns]) - self.Q[s][a])
+        jit_q_update(self.Q[s], self.Q[ns], a, r, self.alpha, self.game.gamma)
         self.alpha *= 0.9999954
 
 
@@ -122,7 +139,7 @@ class MinimaxQAgent(Agent):
                 pickle.dump((self.Q, self.strategy), f)
 
     def val(self, s):
-        return min(np.dot(self.strategy[s].pi, self.Q[s][:, o])
+        return min(jit_minimax_dot(self.strategy[s].pi, self.Q[s], o)
                    for o in range(self.opp_numactions))
 
     def act(self, s):
@@ -137,7 +154,6 @@ class MinimaxQAgent(Agent):
             m.setParam('OutputFlag', 0)
             m.setParam('LogFile', '')
             m.setParam('LogToConsole', 0)
-
             v = m.addVar(name='v')
             pi = {}
             for a in range(self.numactions):
@@ -150,9 +166,8 @@ class MinimaxQAgent(Agent):
                     name='c_o{}'.format(o))
             m.addConstr(quicksum(pi[a] for a in range(self.numactions)) == 1, name='c_pi')
             m.optimize()
-            if m.Status == GRB.OPTIMAL:
-                return [pi[a].X for a in range(self.numactions)]
-        else:
+            self.strategy[s].update([pi[a].X for a in range(self.numactions)])
+        elif solver == 'pulp':
             v = LpVariable('v')
             pi = LpVariable.dicts('pi', list(range(self.numactions)), 0, 1)
             prob = LpProblem('LP', LpMaximize)
@@ -160,25 +175,22 @@ class MinimaxQAgent(Agent):
             for o in range(self.opp_numactions):
                 prob += lpSum(pi[a] * self.Q[s][a, o] for a in range(self.numactions)) >= v
             prob += lpSum(pi[a] for a in range(self.numactions)) == 1
-            status = prob.solve(GLPK_CMD(msg=0))
-            if status == 1:
-                return [value(pi[a]) for a in range(self.numactions)]
+            prob.solve(GLPK_CMD(msg=0))
+            self.strategy[s].update([value(pi[a]) for a in range(self.numactions)])
 
         return None
 
     def update(self, s, a, o, r, ns):
-        self.Q[s][a, o] += self.alpha * (r + self.game.gamma * self.val(ns) - self.Q[s][a, o])
+        jit_minimax_update(self.Q[s], self.val(ns), a, o, r, self.alpha, self.game.gamma)
         self.alpha *= 0.9999954
 
         if sys.version_info >= (3, 0):
-            pi = self.update_strategy(s, 'pulp')
+            self.update_strategy(s, solver='pulp')
         else:
-            # assert np.allclose(self.update_strategy(s, 'gurobi'), self.update_strategy(s, 'pulp'))
-            pi = self.update_strategy(s, 'gurobi')
-            if pi is None:
-                pi = self.update_strategy(s, 'pulp')
-
-        self.strategy[s].update(pi)
+            try:
+                self.update_strategy(s, solver='gurobi')
+            except:
+                self.update_strategy(s, solver='pulp')
 
 
 # class KappaAgent(Agent):

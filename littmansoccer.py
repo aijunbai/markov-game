@@ -2,16 +2,46 @@
 
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
-
-import random
-
-import numpy as np
 from builtins import *
 
+import random
+from numba import jit
+
+import numpy as np
 import markovgame
 import utils
 
 __author__ = 'Aijun Bai'
+
+@jit(nopython=True)
+def jit_one_step(positions, directions, actions, ball):
+    return positions[ball] + directions[actions[ball], :]
+
+@jit(nopython=True)
+def jit_joint_one_step(positions, directions, actions, l, w):
+    positions[0] += directions[actions[0], :]
+    positions[1] += directions[actions[1], :]
+    jit_validate(positions[0], l, w)
+    jit_validate(positions[1], l, w)
+
+@jit(nopython=True)
+def jit_validate(position, l, w):
+    position[0] = min(max(0, position[0]), l - 1)
+    position[1] = min(max(0, position[1]), w - 1)
+
+@jit(nopython=True)
+def jit_position_equal(positions):
+    return positions[0][0] == positions[1][0] and positions[0][1] == positions[1][1]
+
+@jit(nopython=True)
+def jit_positions_equal(s1, s2):
+    return s1[0][0] == s2[0][0] and s1[0][1] == s2[0][1] \
+           and s1[1][0] == s2[1][0] and s1[1][1] == s2[1][1]
+
+@jit(nopython=True)
+def jit_random_position(l, w):
+    return np.array([np.random.randint(0, l), np.random.randint(0, w)], dtype=np.int)
+
 
 class State(object):
     def __init__(self):
@@ -36,7 +66,7 @@ class State(object):
     def __eq__(self, other):
         return isinstance(other, self.__class__) \
                and self.ball == other.ball \
-               and np.array_equal(self.positions, other.positions)
+               and jit_positions_equal(self.positions, other.positions)
 
     def __ne__(self, other):
         return not (self == other)
@@ -68,17 +98,14 @@ class Simulator(markovgame.Simulator):
                 i, self.wins[i], self.wins[i] / self.episodes * 100))
 
     def random_position(self):
-        return np.array([
-            np.random.randint(0, self.length),
-            np.random.randint(0, self.width)],
-            dtype=np.int)
+        return jit_random_position(self.length, self.width)
 
     def initial_state(self, random_positions=False):
         state = State()
         state.ball = random.randint(0, 1)
 
         if random_positions:
-            while np.array_equal(state.positions[0], state.positions[1]):
+            while jit_position_equal(state.positions):
                 state.positions[0] = self.random_position()
                 state.positions[1] = self.random_position()
         else:
@@ -88,20 +115,16 @@ class Simulator(markovgame.Simulator):
         self.assertion(state)
         return state
 
-    def validate(self, pos):
-        pos[0] = utils.minmax(0, pos[0], self.length - 1)
-        pos[1] = utils.minmax(0, pos[1], self.width - 1)
-
     def assertion(self, state):
         assert 0 <= state.positions[0][0] <= self.length - 1
         assert 0 <= state.positions[0][1] <= self.width - 1
         assert 0 <= state.positions[1][0] <= self.length - 1
         assert 0 <= state.positions[1][1] <= self.width - 1
-        assert not np.array_equal(state.positions[0], state.positions[1])
+        assert not jit_position_equal(state.positions)
         assert state.ball == 0 or state.ball == 1
 
     def goal(self, state, actions):
-        pos = state.positions[state.ball] + Simulator.directions[actions[state.ball], :]
+        pos = jit_one_step(state.positions, Simulator.directions, actions, state.ball)
 
         if (self.width - 1) / 2 <= pos[1] <= (self.width + 1) / 2:
             if state.ball == 0 and pos[0] < 0:
@@ -131,14 +154,12 @@ class Simulator(markovgame.Simulator):
                 if random.random() < self.random_threshold:
                     actions[i] = random.randint(0, self.numactions(i) - 1)
 
-            next_state.positions += np.vstack((
-                Simulator.directions[actions[0]],
-                Simulator.directions[actions[1]]))
+            jit_joint_one_step(
+                next_state.positions,
+                Simulator.directions,
+                actions, self.length, self.width)
 
-            self.validate(next_state.positions[0])
-            self.validate(next_state.positions[1])
-
-            if np.array_equal(next_state.positions[0], next_state.positions[1]):
+            if jit_position_equal(next_state.positions):
                 next_state = state.clone()  # the move does not take place
 
                 if actions[0] == 4:

@@ -2,10 +2,17 @@
 
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
-
-import numpy as np
 from builtins import *
+from numba import jit
+import numpy as np
+
 __author__ = 'Aijun Bai'
+
+@jit(nopython=True)
+def jit_normalize(pi):
+    prob = np.sum(pi)
+    if prob > 1.0:
+        pi /= prob
 
 class Strategy(object):
     def __init__(self, n, pi=None):
@@ -15,14 +22,11 @@ class Strategy(object):
             self.pi = np.random.dirichlet([1] * n)
 
     def sample(self):
+        jit_normalize(self.pi)
         ret = np.random.multinomial(1, self.pi)
         return [k for k, v in enumerate(ret) if v > 0][0]
 
     def update(self, pi):
-        s = sum(pi)
-        if s > 1.0:
-            pi = [x / s for x in pi]
-
         self.pi = np.array(pi)
 
     def add_noise(self):  # this is problemetic
