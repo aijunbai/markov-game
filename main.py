@@ -28,18 +28,18 @@ def experiment(H):
     # g = bimatrixgame.RandomGame(H, 2, 2, zero_sum=True)
 
     # g.add_player(agent.RandomAgent(0, g))
-    # g.add_player(agent.QAgent(0, g, train=True))
-    g.add_player(agent.MinimaxQAgent(0, g, train=True))
+    g.add_player(agent.QAgent(0, g, train=True))
+    # g.add_player(agent.MinimaxQAgent(0, g, train=True))
 
     # g.add_player(agent.RandomAgent(1, g))
-    # g.add_player(agent.QAgent(1, g, train=True))
-    g.add_player(agent.MinimaxQAgent(1, g, train=True))
+    g.add_player(agent.QAgent(1, g, train=True))
+    # g.add_player(agent.MinimaxQAgent(1, g, train=True))
 
     g.run(verbose=False)
 
 def main(N):
     for i in range(N):
-        experiment(H=1000000)
+        experiment(H=100000)
 
 if __name__ == '__main__':
     if seed is not None:

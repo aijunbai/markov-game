@@ -3,13 +3,12 @@
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
-import numpy as np
 import random
-import sys
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
 from functools import partial
 
+import numpy as np
 from builtins import *
 
 if sys.version_info >= (3, 0):
@@ -136,6 +135,9 @@ class MinimaxQAgent(Agent):
         if solver == 'gurobi':
             m = Model('LP')
             m.setParam('OutputFlag', 0)
+            m.setParam('LogFile', '')
+            m.setParam('LogToConsole', 0)
+
             v = m.addVar(name='v')
             pi = {}
             for a in range(self.numactions):

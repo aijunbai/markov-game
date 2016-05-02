@@ -3,9 +3,9 @@
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
-import numpy as np
 from abc import ABCMeta, abstractmethod
 
+import numpy as np
 from builtins import *
 
 import utils
@@ -44,7 +44,7 @@ class Game(object):
 
             actions = np.array([
                 self.players[0].act(self.state),
-                self.players[1].act(self.state)])
+                self.players[1].act(self.state)], dtype=np.int)
             next_state, rewards = self.simulate(actions, verbose=verbose)
 
             for j, player in self.players.items():

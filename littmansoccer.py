@@ -3,9 +3,9 @@
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
-import numpy as np
 import random
 
+import numpy as np
 from builtins import *
 
 import markovgame
@@ -13,11 +13,10 @@ import utils
 
 __author__ = 'Aijun Bai'
 
-
 class State(object):
     def __init__(self):
         self.ball = 0  # the player holding the ball
-        self.positions = np.zeros((2, 2))
+        self.positions = np.zeros((2, 2), dtype=np.int)
 
     def clone(self):
         cloned = State()
@@ -48,7 +47,7 @@ class Simulator(markovgame.Simulator):
                            [1, 0],
                            [0, -1],
                            [-1, 0],
-                           [0, 0]])
+                           [0, 0]], dtype=np.int)
 
     def __init__(self, game):
         super().__init__(game)
@@ -56,7 +55,7 @@ class Simulator(markovgame.Simulator):
         self.width = 4
         self.random_threshold = 0.1
         self.episodes = 1
-        self.wins = np.ones(2)
+        self.wins = np.ones(2, dtype=np.int)
 
     def numactions(self, no):
         return 5
@@ -69,7 +68,10 @@ class Simulator(markovgame.Simulator):
                 i, self.wins[i], self.wins[i] / self.episodes * 100))
 
     def random_position(self):
-        return np.array([random.randint(0, self.length - 1), random.randint(0, self.width - 1)])
+        return np.array([
+            np.random.randint(0, self.length),
+            np.random.randint(0, self.width)],
+            dtype=np.int)
 
     def initial_state(self, random_positions=False):
         state = State()
@@ -80,8 +82,8 @@ class Simulator(markovgame.Simulator):
                 state.positions[0] = self.random_position()
                 state.positions[1] = self.random_position()
         else:
-            state.positions[0] = np.array([3, 2])
-            state.positions[1] = np.array([1, 1])
+            state.positions[0] = np.array([3, 2], dtype=np.int)
+            state.positions[1] = np.array([1, 1], dtype=np.int)
 
         self.assertion(state)
         return state
@@ -99,7 +101,7 @@ class Simulator(markovgame.Simulator):
         assert state.ball == 0 or state.ball == 1
 
     def goal(self, state, actions):
-        pos = state.positions[state.ball] + Simulator.directions[actions[state.ball]]
+        pos = state.positions[state.ball] + Simulator.directions[actions[state.ball], :]
 
         if (self.width - 1) / 2 <= pos[1] <= (self.width + 1) / 2:
             if state.ball == 0 and pos[0] < 0:
