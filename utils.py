@@ -5,8 +5,6 @@ from __future__ import (absolute_import, division,
 
 from builtins import *
 __author__ = "Aijun Bai"
-__copyright__ = "Copyright 2015, Alibaba Inc."
-__email__ = "aijunbai@gmail.com"
 
 
 def makehash():

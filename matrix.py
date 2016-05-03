@@ -2,9 +2,9 @@
 
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
+from builtins import *
 
 import numpy as np
-from builtins import *
 __author__ = 'Aijun Bai'
 
 class BiMatrix(object):

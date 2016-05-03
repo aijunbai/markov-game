@@ -2,20 +2,24 @@
 
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
+from builtins import *
 
 import random
+import sys
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
 from functools import partial
 
 import numpy as np
-from builtins import *
 
 if sys.version_info >= (3, 0):
     from pulp import *
 else:
     from pulp import *
-    from gurobipy import *
+    try:
+        from gurobipy import *
+    except:
+        pass
 import pickle
 
 import strategy
@@ -150,9 +154,8 @@ class MinimaxQAgent(Agent):
                     name='c_o{}'.format(o))
             m.addConstr(quicksum(pi[a] for a in range(self.numactions)) == 1, name='c_pi')
             m.optimize()
-            if m.Status == GRB.OPTIMAL:
-                return [pi[a].X for a in range(self.numactions)]
-        else:
+            self.strategy[s].update([pi[a].X for a in range(self.numactions)])
+        elif solver == 'pulp':
             v = LpVariable('v')
             pi = LpVariable.dicts('pi', list(range(self.numactions)), 0, 1)
             prob = LpProblem('LP', LpMaximize)
@@ -160,9 +163,8 @@ class MinimaxQAgent(Agent):
             for o in range(self.opp_numactions):
                 prob += lpSum(pi[a] * self.Q[s][a, o] for a in range(self.numactions)) >= v
             prob += lpSum(pi[a] for a in range(self.numactions)) == 1
-            status = prob.solve(GLPK_CMD(msg=0))
-            if status == 1:
-                return [value(pi[a]) for a in range(self.numactions)]
+            prob.solve(GLPK_CMD(msg=0))
+            self.strategy[s].update([value(pi[a]) for a in range(self.numactions)])
 
         return None
 
@@ -171,14 +173,12 @@ class MinimaxQAgent(Agent):
         self.alpha *= 0.9999954
 
         if sys.version_info >= (3, 0):
-            pi = self.update_strategy(s, 'pulp')
+            self.update_strategy(s, solver='pulp')
         else:
-            # assert np.allclose(self.update_strategy(s, 'gurobi'), self.update_strategy(s, 'pulp'))
-            pi = self.update_strategy(s, 'gurobi')
-            if pi is None:
-                pi = self.update_strategy(s, 'pulp')
-
-        self.strategy[s].update(pi)
+            try:
+                self.update_strategy(s, solver='gurobi')
+            except:
+                self.update_strategy(s, solver='pulp')
 
 
 # class KappaAgent(Agent):

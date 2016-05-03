@@ -2,11 +2,11 @@
 
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
+from builtins import *
 
 from abc import ABCMeta, abstractmethod
 
 import numpy as np
-from builtins import *
 
 import utils
 

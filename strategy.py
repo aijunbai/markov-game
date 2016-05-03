@@ -3,8 +3,8 @@
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
-import numpy as np
 from builtins import *
+import numpy as np
 __author__ = 'Aijun Bai'
 
 class Strategy(object):
@@ -15,14 +15,13 @@ class Strategy(object):
             self.pi = np.random.dirichlet([1] * n)
 
     def sample(self):
+        prob = np.sum(self.pi)
+        if prob > 1.0:
+            self.pi /= prob
         ret = np.random.multinomial(1, self.pi)
         return [k for k, v in enumerate(ret) if v > 0][0]
 
     def update(self, pi):
-        s = sum(pi)
-        if s > 1.0:
-            pi = [x / s for x in pi]
-
         self.pi = np.array(pi)
 
     def add_noise(self):  # this is problemetic
