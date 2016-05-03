@@ -29,8 +29,8 @@ def experiment(H):
     g = littmansoccer.LittmanSoccer(H)
 
     # g.add_player(agent.RandomAgent(0, g))
-    g.add_player(agent.QAgent(0, g, train=True))
-    # g.add_player(agent.MinimaxQAgent(0, g, train=True))
+    # g.add_player(agent.QAgent(0, g, train=True))
+    g.add_player(agent.MinimaxQAgent(0, g, train=True))
 
     # g.add_player(agent.RandomAgent(1, g))
     g.add_player(agent.QAgent(1, g, train=True))

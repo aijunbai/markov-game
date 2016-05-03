@@ -12,16 +12,7 @@ from functools import partial
 
 import numpy as np
 
-if sys.version_info >= (3, 0):
-    from pulp import *
-else:
-    from pulp import *
-    try:
-        from gurobipy import *
-    except:
-        pass
 import pickle
-
 import strategy
 
 __author__ = 'Aijun Bai'
@@ -135,36 +126,47 @@ class MinimaxQAgent(Agent):
         else:
             return self.strategy[s].sample()
 
-    def update_strategy(self, s, solver='gurobi'):
-        if solver == 'gurobi':
-            m = Model('LP')
+    def lp_solve(self, s, solver='scipy'):
+        if solver == 'gurobipy':
+            import gurobipy as grb
+            m = grb.Model('LP')
             m.setParam('OutputFlag', 0)
             m.setParam('LogFile', '')
             m.setParam('LogToConsole', 0)
-
             v = m.addVar(name='v')
             pi = {}
             for a in range(self.numactions):
                 pi[a] = m.addVar(lb=0.0, ub=1.0, name='pi_{}'.format(a))
             m.update()
-            m.setObjective(v, sense=GRB.MAXIMIZE)
+            m.setObjective(v, sense=grb.GRB.MAXIMIZE)
             for o in range(self.opp_numactions):
                 m.addConstr(
-                    quicksum(pi[a] * self.Q[s][a, o] for a in range(self.numactions)) >= v,
+                    grb.quicksum(pi[a] * self.Q[s][a, o] for a in range(self.numactions)) >= v,
                     name='c_o{}'.format(o))
-            m.addConstr(quicksum(pi[a] for a in range(self.numactions)) == 1, name='c_pi')
+            m.addConstr(grb.quicksum(pi[a] for a in range(self.numactions)) == 1, name='c_pi')
             m.optimize()
-            self.strategy[s].update([pi[a].X for a in range(self.numactions)])
+            return [pi[a].X for a in range(self.numactions)]
         elif solver == 'pulp':
-            v = LpVariable('v')
-            pi = LpVariable.dicts('pi', list(range(self.numactions)), 0, 1)
-            prob = LpProblem('LP', LpMaximize)
+            import pulp as lp
+            v = lp.LpVariable('v')
+            pi = lp.LpVariable.dicts('pi', list(range(self.numactions)), 0, 1)
+            prob = lp.LpProblem('LP', lp.LpMaximize)
             prob += v
             for o in range(self.opp_numactions):
-                prob += lpSum(pi[a] * self.Q[s][a, o] for a in range(self.numactions)) >= v
-            prob += lpSum(pi[a] for a in range(self.numactions)) == 1
-            prob.solve(GLPK_CMD(msg=0))
-            self.strategy[s].update([value(pi[a]) for a in range(self.numactions)])
+                prob += lp.lpSum(pi[a] * self.Q[s][a, o] for a in range(self.numactions)) >= v
+            prob += lp.lpSum(pi[a] for a in range(self.numactions)) == 1
+            prob.solve(lp.GLPK_CMD(msg=0))
+            return [lp.value(pi[a]) for a in range(self.numactions)]
+        elif solver == 'scipy':
+            from scipy.optimize import linprog
+            c = np.append(np.zeros(self.numactions), -1.0)
+            A_ub = np.c_[-self.Q[s].T, np.ones(self.numactions)]
+            b_ub = np.zeros(self.numactions)
+            A_eq = np.array([np.append(np.ones(self.numactions), 0.0)])
+            b_eq = np.array([1.0])
+            bounds = [(0.0, 1.0) for _ in range(self.numactions)] + [(-np.inf, np.inf)]
+            res = linprog(c=c, A_ub=A_ub, b_ub=b_ub, A_eq=A_eq, b_eq=b_eq, bounds=bounds)
+            return res.x[:-1]
 
         return None
 
@@ -172,13 +174,13 @@ class MinimaxQAgent(Agent):
         self.Q[s][a, o] += self.alpha * (r + self.game.gamma * self.val(ns) - self.Q[s][a, o])
         self.alpha *= 0.9999954
 
-        if sys.version_info >= (3, 0):
-            self.update_strategy(s, solver='pulp')
-        else:
+        for solver in ['gurobipy', 'scipy', 'pulp']:
             try:
-                self.update_strategy(s, solver='gurobi')
-            except:
-                self.update_strategy(s, solver='pulp')
+                self.strategy[s].update(self.lp_solve(s, solver=solver))
+            except Exception:
+                continue
+            else:
+                break
 
 
 # class KappaAgent(Agent):
