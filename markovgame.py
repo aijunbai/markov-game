@@ -24,7 +24,7 @@ class Simulator(object):
         pass
 
     @abstractmethod
-    def step(self, state, actions, verbose=False):
+    def step(self, state, actions):
         pass
 
     @abstractmethod
@@ -40,8 +40,8 @@ class MarkovGame(game.Game):
         self.simulator = simulator
         self.state = self.simulator.initial_state()
 
-    def simulate(self, actions, verbose=False):
-        return self.simulator.step(self.state, actions, verbose=verbose)
+    def simulate(self, actions):
+        return self.simulator.step(self.state, actions)
 
     @abstractmethod
     def numactions(self, no):

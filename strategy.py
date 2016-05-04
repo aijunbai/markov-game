@@ -15,14 +15,12 @@ class Strategy(object):
             self.pi = np.random.dirichlet([1] * n)
 
     def sample(self):
-        prob = np.sum(self.pi)
-        if prob > 1.0:
-            self.pi /= prob
-        ret = np.random.multinomial(1, self.pi)
-        return [k for k, v in enumerate(ret) if v > 0][0]
+        return np.random.choice(self.pi.size, size=1, p=self.pi)[0]
 
     def update(self, pi):
+        assert isinstance(pi, np.ndarray)
         self.pi = pi
+        self.pi /= np.sum(self.pi)
 
     def add_noise(self):  # this is problemetic
         alpha, epsilon = 1000, 0.0001

@@ -28,8 +28,9 @@ class BiMatrixGame(game.Game):
         for p in range(2):
             print('matrix[{}]:'.format(p), pprint.pformat(self.bimatrix.matrix()[p]))
 
-    def simulate(self, actions, verbose=False):  # state, actions -> state, reward
-        return self.state, np.array([self.bimatrix.get_reward_for(i, actions) for i in range(2)])
+    def simulate(self, actions):  # state, actions -> state, reward
+        return self.state, np.array(
+            [self.bimatrix.get_reward_for(i, actions) for i in range(2)])
 
 
 class PenaltyShoot(BiMatrixGame):

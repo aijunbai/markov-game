@@ -24,8 +24,17 @@ class State(object):
         cloned.positions = np.copy(self.positions)
         return cloned
 
+    @staticmethod
+    def bound(coordinates, min_value, max_value):
+        np.clip(coordinates, min_value, max_value, out=coordinates)
+
     def __str__(self):
-        return 'b:{} p:{}'.format(self.ball, self.positions)
+        return '{} {} {} {} {}'.format(
+            self.ball,
+            self.positions[0, 0],
+            self.positions[0, 1],
+            self.positions[1, 0],
+            self.positions[1, 1])
 
     def __repr__(self):
         return self.__str__()
@@ -43,25 +52,40 @@ class State(object):
 
 
 class Simulator(markovgame.Simulator):
-    directions = np.array([[0, 1],
-                           [1, 0],
-                           [0, -1],
-                           [-1, 0],
-                           [0, 0]], dtype=np.int)
+    directions = np.array(
+        [[0, 1],   # N
+         [1, 0],   # E
+         [0, -1],  # S
+         [-1, 0],  # W
+         [0, 0]],  # stand
+        dtype=np.int)
+
+    action_names = {
+        0: 'N',
+        1: 'E',
+        2: 'S',
+        3: 'W',
+        4: 'stand'}
 
     def __init__(self, game):
         super().__init__(game)
         self.length = 5
         self.width = 4
-        self.random_threshold = 0.1
-        self.episodes = 1
+        self.bounds = np.array([self.length - 1, self.width - 1], dtype=np.int)
+
+        self.episodes = 2
         self.wins = np.ones(2, dtype=np.int)
 
     def numactions(self, no):
         return 5
 
+    def goal(self, i):
+        self.episodes += 1
+        self.wins[i] += 1
+        self.report()
+
     def report(self):
-        print('step: {}'.format(self.game.step))
+        print('goal @ step: {}'.format(self.game.step))
         print('episodes: {}'.format(self.episodes))
         for i in range(2):
             print('{}: win {} ({}%)'.format(
@@ -88,72 +112,63 @@ class Simulator(markovgame.Simulator):
         self.assertion(state)
         return state
 
-    def validate(self, pos):
-        pos[0] = utils.minmax(0, pos[0], self.length - 1)
-        pos[1] = utils.minmax(0, pos[1], self.width - 1)
-
     def assertion(self, state):
-        assert 0 <= state.positions[0][0] <= self.length - 1
-        assert 0 <= state.positions[0][1] <= self.width - 1
-        assert 0 <= state.positions[1][0] <= self.length - 1
-        assert 0 <= state.positions[1][1] <= self.width - 1
+        for c in range(2):
+            assert (state.positions[:, c] >= 0).all()
+            assert (state.positions[:, c] <= self.bounds[c]).all()
         assert not np.array_equal(state.positions[0], state.positions[1])
         assert state.ball == 0 or state.ball == 1
 
-    def goal(self, state, actions):
-        pos = state.positions[state.ball] + Simulator.directions[actions[state.ball], :]
+    def is_goal(self, position, i):
+        return (self.width - 1) / 2 <= position[1] <= (self.width + 1) / 2 \
+               and ((i == 0 and position[0] < 0) \
+                    or (i == 1 and position[0] > self.length - 1))
 
-        if (self.width - 1) / 2 <= pos[1] <= (self.width + 1) / 2:
-            if state.ball == 0 and pos[0] < 0:
-                return 0
-            elif state.ball == 1 and pos[0] > self.length - 1:
-                return 1
+    def bound(self, position):
+        for d in range(2):
+            position[d] = utils.minmax(0, position[d], self.bounds[d])
 
-        return None
-
-    def step(self, state, actions, verbose=False):
+    def step(self, state, actions):
         self.assertion(state)
 
         rewards = np.zeros(2)
-        goal = self.goal(state, actions)
+        next_state = state.clone()
+        order = [0, 1] if random.random() < 0.5 else [1, 0]
+        goal_player = None
 
-        if goal is not None:
-            rewards[goal] = 1
-            rewards[1 - goal] = -1
-            next_state = self.initial_state()  # new episode
-            self.episodes += 1
-            self.wins[goal] += 1
-            self.report()
-        else:
-            next_state = state.clone()
+        for i in order:
+            assert 0 <= actions[i] < self.numactions(i)
+            position = next_state.positions[i] + Simulator.directions[actions[i], :]
 
-            for i in range(2):
-                if random.random() < self.random_threshold:
-                    actions[i] = random.randint(0, self.numactions(i) - 1)
+            if next_state.ball == i and self.is_goal(position, i):
+                rewards[i] = 1
+                rewards[1 - i] = -1
+                next_state = self.initial_state()  # new episode
+                goal_player = i
+                break
+            elif np.array_equal(position, next_state.positions[1 - i]):  # the move does not take place
+                if next_state.ball == i:
+                    next_state.ball = 1 - i  # swithch ball possession
+            else:
+                next_state.positions[i] = position
 
-            next_state.positions += np.vstack((
-                Simulator.directions[actions[0]],
-                Simulator.directions[actions[1]]))
+            self.bound(next_state.positions[i])
 
-            self.validate(next_state.positions[0])
-            self.validate(next_state.positions[1])
-
-            if np.array_equal(next_state.positions[0], next_state.positions[1]):
-                next_state = state.clone()  # the move does not take place
-
-                if actions[0] == 4:
-                    next_state.ball = 0
-                elif actions[1] == 4:
-                    next_state.ball = 1
-
-        if verbose:
+        if self.game.verbose:
             self.draw(state)
-            print('actions: {}'.format(actions))
+            print('actions: {}'.format([Simulator.action_names[a] for a in actions]))
+            print('order: {}'.format(order))
             print('rewards: {}'.format(rewards))
+            print()
+
+        if goal_player is not None:
+            self.goal(goal_player)
+            print()
 
         return next_state, rewards
 
     def draw(self, state):
+        print('state: {}'.format(state))
         for r in range(-1, self.width + 1):
             for c in range(-1, self.length + 1):
                 if 0 <= r <= self.width - 1 and 0 <= c <= self.length - 1:
@@ -167,7 +182,6 @@ class Simulator(markovgame.Simulator):
                 else:
                     print('#', end='')
             print('\n', end='')
-        print(state)
 
 
 class LittmanSoccer(markovgame.MarkovGame):

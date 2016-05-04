@@ -25,7 +25,7 @@ def experiment(H):
     # g = bimatrixgame.MatchingPennies(H)
     # g = bimatrixgame.Inspection(H)
     # g = bimatrixgame.Chicken(H)
-    # g = bimatrixgame.RandomGame(H, 2, 2, zero_sum=True)
+    # g = bimatrixgame.RandomGame(H, 5, 5, zero_sum=True)
     g = littmansoccer.LittmanSoccer(H)
 
     # g.add_player(agent.RandomAgent(0, g))
@@ -36,11 +36,12 @@ def experiment(H):
     # g.add_player(agent.QAgent(1, g, train=True))
     g.add_player(agent.MinimaxQAgent(1, g, train=True))
 
-    g.run(verbose=False)
+    g.set_verbose(verbose=False)
+    g.run()
 
 def main(N):
     for i in range(N):
-        experiment(H=1000000)
+        experiment(H=10000)
 
 if __name__ == '__main__':
     if seed is not None:
