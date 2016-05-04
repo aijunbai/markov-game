@@ -22,7 +22,7 @@ class Strategy(object):
         return [k for k, v in enumerate(ret) if v > 0][0]
 
     def update(self, pi):
-        self.pi = np.array(pi)
+        self.pi = pi
 
     def add_noise(self):  # this is problemetic
         alpha, epsilon = 1000, 0.0001

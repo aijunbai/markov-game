@@ -2,7 +2,7 @@
 
 set -o nounset                              # Treat unset variables as an error
 
-PYTHON=`which python`
+source config.sh
 PROF="main.prof"
 
 profile() {

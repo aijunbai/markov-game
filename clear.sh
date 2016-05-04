@@ -1,9 +1,9 @@
 #!/bin/bash - 
 #===============================================================================
 #
-#          FILE: run.sh
+#          FILE: clear.sh
 # 
-#         USAGE: ./run.sh 
+#         USAGE: ./clear.sh 
 # 
 #   DESCRIPTION: 
 # 
@@ -13,10 +13,10 @@
 #         NOTES: ---
 #        AUTHOR: YOUR NAME (), 
 #  ORGANIZATION: 
-#       CREATED: 03/23/2016 13:52
+#       CREATED: 05/03/2016 17:25
 #      REVISION:  ---
 #===============================================================================
 
 set -o nounset                              # Treat unset variables as an error
-source config.sh
-time $PYTHON -OO main.py
+rm -f *.log *.prof
+

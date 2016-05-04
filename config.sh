@@ -1,9 +1,9 @@
 #!/bin/bash - 
 #===============================================================================
 #
-#          FILE: run.sh
+#          FILE: config.sh
 # 
-#         USAGE: ./run.sh 
+#         USAGE: ./config.sh 
 # 
 #   DESCRIPTION: 
 # 
@@ -13,10 +13,11 @@
 #         NOTES: ---
 #        AUTHOR: YOUR NAME (), 
 #  ORGANIZATION: 
-#       CREATED: 03/23/2016 13:52
+#       CREATED: 05/03/2016 17:28
 #      REVISION:  ---
 #===============================================================================
 
 set -o nounset                              # Treat unset variables as an error
-source config.sh
-time $PYTHON -OO main.py
+PYTHON=`which python3m`
+
+

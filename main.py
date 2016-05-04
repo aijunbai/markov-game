@@ -33,14 +33,14 @@ def experiment(H):
     g.add_player(agent.MinimaxQAgent(0, g, train=True))
 
     # g.add_player(agent.RandomAgent(1, g))
-    g.add_player(agent.QAgent(1, g, train=True))
-    # g.add_player(agent.MinimaxQAgent(1, g, train=True))
+    # g.add_player(agent.QAgent(1, g, train=True))
+    g.add_player(agent.MinimaxQAgent(1, g, train=True))
 
     g.run(verbose=False)
 
 def main(N):
     for i in range(N):
-        experiment(H=10000)
+        experiment(H=1000000)
 
 if __name__ == '__main__':
     if seed is not None:

@@ -12,6 +12,7 @@ from functools import partial
 
 import numpy as np
 
+import importlib
 import pickle
 import strategy
 
@@ -109,6 +110,13 @@ class MinimaxQAgent(Agent):
             with open(self.pickle_name(), 'rb') as f:
                 self.Q, self.strategy = pickle.load(f)
 
+        self.solvers = []
+        for lib in ['gurobipy', 'scipy.optimize', 'pulp']:
+            try:
+                self.solvers.append((lib, importlib.import_module(lib)))
+            except:
+                pass
+
     def done(self):
         super().done()
 
@@ -126,10 +134,19 @@ class MinimaxQAgent(Agent):
         else:
             return self.strategy[s].sample()
 
-    def lp_solve(self, s, solver='scipy'):
-        if solver == 'gurobipy':
-            import gurobipy as grb
-            m = grb.Model('LP')
+    def lp_solve(self, s, solver, lib):
+        if solver == 'scipy.optimize':
+            c = np.append(np.zeros(self.numactions), -1.0)
+            A_ub = np.c_[-self.Q[s].T, np.ones(self.numactions)]
+            b_ub = np.zeros(self.opp_numactions)
+            A_eq = np.array([np.append(np.ones(self.numactions), 0.0)])
+            b_eq = np.array([1.0])
+            bounds = [(0.0, 1.0) for _ in range(self.numactions)] + [(-np.inf, np.inf)]
+            res = lib.linprog(
+                c=c, A_ub=A_ub, b_ub=b_ub, A_eq=A_eq, b_eq=b_eq, bounds=bounds)
+            ret = res.x[:-1]
+        elif solver == 'gurobipy':
+            m = lib.Model('LP')
             m.setParam('OutputFlag', 0)
             m.setParam('LogFile', '')
             m.setParam('LogToConsole', 0)
@@ -138,46 +155,41 @@ class MinimaxQAgent(Agent):
             for a in range(self.numactions):
                 pi[a] = m.addVar(lb=0.0, ub=1.0, name='pi_{}'.format(a))
             m.update()
-            m.setObjective(v, sense=grb.GRB.MAXIMIZE)
+            m.setObjective(v, sense=lib.GRB.MAXIMIZE)
             for o in range(self.opp_numactions):
                 m.addConstr(
-                    grb.quicksum(pi[a] * self.Q[s][a, o] for a in range(self.numactions)) >= v,
+                    lib.quicksum(pi[a] * self.Q[s][a, o] for a in range(self.numactions)) >= v,
                     name='c_o{}'.format(o))
-            m.addConstr(grb.quicksum(pi[a] for a in range(self.numactions)) == 1, name='c_pi')
+            m.addConstr(lib.quicksum(pi[a] for a in range(self.numactions)) == 1, name='c_pi')
             m.optimize()
-            return [pi[a].X for a in range(self.numactions)]
+            ret = np.array([pi[a].X for a in range(self.numactions)])
         elif solver == 'pulp':
-            import pulp as lp
-            v = lp.LpVariable('v')
-            pi = lp.LpVariable.dicts('pi', list(range(self.numactions)), 0, 1)
-            prob = lp.LpProblem('LP', lp.LpMaximize)
+            v = lib.LpVariable('v')
+            pi = lib.LpVariable.dicts('pi', list(range(self.numactions)), 0, 1)
+            prob = lib.LpProblem('LP', lib.LpMaximize)
             prob += v
             for o in range(self.opp_numactions):
-                prob += lp.lpSum(pi[a] * self.Q[s][a, o] for a in range(self.numactions)) >= v
-            prob += lp.lpSum(pi[a] for a in range(self.numactions)) == 1
-            prob.solve(lp.GLPK_CMD(msg=0))
-            return [lp.value(pi[a]) for a in range(self.numactions)]
-        elif solver == 'scipy':
-            from scipy.optimize import linprog
-            c = np.append(np.zeros(self.numactions), -1.0)
-            A_ub = np.c_[-self.Q[s].T, np.ones(self.numactions)]
-            b_ub = np.zeros(self.numactions)
-            A_eq = np.array([np.append(np.ones(self.numactions), 0.0)])
-            b_eq = np.array([1.0])
-            bounds = [(0.0, 1.0) for _ in range(self.numactions)] + [(-np.inf, np.inf)]
-            res = linprog(c=c, A_ub=A_ub, b_ub=b_ub, A_eq=A_eq, b_eq=b_eq, bounds=bounds)
-            return res.x[:-1]
+                prob += lib.lpSum(pi[a] * self.Q[s][a, o] for a in range(self.numactions)) >= v
+            prob += lib.lpSum(pi[a] for a in range(self.numactions)) == 1
+            prob.solve(lib.GLPK_CMD(msg=0))
+            ret = np.array([lib.value(pi[a]) for a in range(self.numactions)])
 
-        return None
+        if not (ret >= 0.0).all():
+            raise Exception('{} - negative probability error: {}'.format(solver, ret))
+
+        return ret
 
     def update(self, s, a, o, r, ns):
         self.Q[s][a, o] += self.alpha * (r + self.game.gamma * self.val(ns) - self.Q[s][a, o])
         self.alpha *= 0.9999954
+        self.update_strategy(s)
 
-        for solver in ['gurobipy', 'scipy', 'pulp']:
+    def update_strategy(self, s):
+        for solver, lib in self.solvers:
             try:
-                self.strategy[s].update(self.lp_solve(s, solver=solver))
-            except Exception:
+                self.strategy[s].update(self.lp_solve(s, solver, lib))
+            except Exception as e:
+                print(e)
                 continue
             else:
                 break
