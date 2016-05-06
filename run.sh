@@ -19,4 +19,4 @@
 
 set -o nounset                              # Treat unset variables as an error
 source config.sh
-time $PYTHON -OO main.py
+time $PYTHON -O main.py $*

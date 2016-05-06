@@ -44,7 +44,7 @@ class Agent(object):
         pass
 
     def pickle_name(self):
-        return '{}_{}.pickle'.format(self.name, self.no)
+        return 'data/{}_{}.pickle'.format(self.game.configuration(), self.no)
 
 
 class StationaryAgent(Agent):
@@ -65,6 +65,7 @@ class RandomAgent(StationaryAgent):
     def __init__(self, no, game):
         n = game.numactions(no)
         super().__init__(no, game, [1.0 / n] * n)
+        self.name = 'random'
 
 class BaseQAgent(Agent):
     def __init__(self, no, game, name, train=True, episilon=0.2, N=100):
@@ -74,20 +75,27 @@ class BaseQAgent(Agent):
         self.step = 0
         self.Q = None
         self.strategy = defaultdict(partial(strategy.Strategy, self.numactions))
-
-        if not self.train:  # load
-            with open(self.pickle_name(), 'rb') as f:
-                self.Q, self.strategy = pickle.load(f)
+        self.initialized = False
 
     def alpha(self):
         return self.N / (self.N + self.step)
+
+    def initialize(self):
+        if not self.initialized:
+            if not self.train:  # load
+                try:
+                    with open(self.pickle_name(), 'rb') as f:
+                        self.Q, self.strategy = pickle.load(f)
+                except IOError as e:
+                    print(e)
+            self.initialized = True
 
     def done(self):
         super().done()
 
         if self.train:
             with open(self.pickle_name(), 'wb') as f:
-                pickle.dump((self.Q, self.strategy), f)
+                pickle.dump((self.Q, self.strategy), f, protocol=2)
 
         if self.game.verbose:
             utils.pv('self.pickle_name()')
@@ -95,6 +103,8 @@ class BaseQAgent(Agent):
             utils.pv('self.strategy')
 
     def act(self, s):
+        self.initialize()
+
         if self.train and random.random() < self.episilon:
             return random.randint(0, self.numactions - 1)
         else:
@@ -111,9 +121,7 @@ class BaseQAgent(Agent):
 class QAgent(BaseQAgent):
     def __init__(self, no, game, train=True, episilon=0.2):
         super().__init__(no, game, 'q', train=train, episilon=episilon)
-
-        if self.train:
-            self.Q = defaultdict(partial(np.random.rand, self.numactions))
+        self.Q = defaultdict(partial(np.random.rand, self.numactions))
 
     def update(self, s, a, o, r, ns):
         super().update(s, a, o, r, ns)
@@ -131,9 +139,7 @@ class QAgent(BaseQAgent):
 class MinimaxQAgent(BaseQAgent):
     def __init__(self, no, game, train=True, episilon=0.2):
         super().__init__(no, game, 'minimax', train=train, episilon=episilon)
-
-        if self.train:
-            self.Q = defaultdict(partial(np.random.rand, self.numactions, self.opp_numactions))
+        self.Q = defaultdict(partial(np.random.rand, self.numactions, self.opp_numactions))
 
         self.solvers = []
         for lib in ['gurobipy', 'scipy.optimize', 'pulp']:

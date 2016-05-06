@@ -82,6 +82,6 @@ def timeit(func):
         startTime = time.time()
         func(*args, **kwargs)
         elapsedTime = time.time() - startTime
-        print('function [{}] finished in {} ms'.format(
-            func.__name__, int(elapsedTime * 1000)))
+        print('function [{}] finished in {} s'.format(
+            func.__name__, elapsedTime))
     return newfunc

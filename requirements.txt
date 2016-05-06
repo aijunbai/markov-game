@@ -1,0 +1,7 @@
+docopt==0.6.2
+future==0.15.2
+gurobipy==6.5.1
+numpy==1.11.0
+PuLP==1.6.1
+scipy==0.17.0
+

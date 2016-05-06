@@ -23,8 +23,8 @@ class BiMatrixGame(game.Game):
     def numactions(self, a):
         return self.bimatrix.numactions()[a]
 
-    def set_matrix(self, A=None, B=None):
-        self.bimatrix = matrix.BiMatrix(A=A, B=B)
+    def set_matrix(self, R=None):
+        self.bimatrix = matrix.BiMatrix(R=R)
         for p in range(2):
             print('matrix[{}]:'.format(p), pprint.pformat(self.bimatrix.matrix()[p]))
 
@@ -37,79 +37,46 @@ class PenaltyShoot(BiMatrixGame):
     def __init__(self, H):
         super().__init__('penaltyshoot', 0.95, H)
         self.set_matrix(
-            A=[[-1, 1], [1, -1]])
+            R=[[-1, 1], [1, -1]])
 
 
 class RockPaperScissors(BiMatrixGame):
     def __init__(self, H):
         super().__init__('rockpaperscissors', 0.95, H)
         self.set_matrix(
-            A=[[0, -1, 1], [1, 0, -1], [-1, 1, 0]])
-
-
-class PrisonersDilemma(BiMatrixGame):
-    def __init__(self, H):
-        super().__init__('prisonersdilemma', 0.95, H)
-        self.set_matrix(
-            A=[[1, 0], [2, 0]],
-            B=[[1, 2], [0, 0]])
-
-
-class PeaceWar(BiMatrixGame):
-    def __init__(self, H):
-        super().__init__('peacewar', 0.95, H)
-        self.set_matrix(
-            A=[[2, 0], [3, 1]],
-            B=[[2, 3], [0, 1]])
-
-
-class CrossStreet(BiMatrixGame):
-    def __init__(self, H):
-        super().__init__('crossstreet', 0.95, H)
-        self.set_matrix(
-            A=[[1, -1], [-1, 1]],
-            B=[[1, -1], [-1, 1]])
-
-
-class MatchingPennies(BiMatrixGame):
-    def __init__(self, H):
-        super().__init__('matchingpennies', 0.95, H)
-        self.set_matrix(
-            A=[[1, -1], [-1, 1]])
-
-
-class Inspection(BiMatrixGame):
-    def __init__(self, H):
-        super().__init__('inspection', 0.95, H)
-        self.set_matrix(
-            A=[[-1, 1], [1, -1]])
-
-
-class Chicken(BiMatrixGame):
-    def __init__(self, H):
-        super().__init__('chicken', 0.95, H)
-        self.set_matrix(
-            A=[[0, 7], [2, 6]],
-            B=[[0, 2], [7, 6]])
+            R=[[0, -1, 1], [1, 0, -1], [-1, 1, 0]])
 
 
 class RockPaperScissorsSpockLizard(BiMatrixGame):
     def __init__(self, H):
         super().__init__('rockpaperscissorsspocklizard', 0.95, H)
         self.set_matrix(
-            A=[[0, -1, 1, -1, 1],
+            R=[[0, -1, 1, -1, 1],
                [1, 0, -1, 1, -1],
                [-1, 1, 0, -1, 1],
                [1, -1, 1, 0, -1],
                [-1, 1, -1, 1, 0]])
 
 
+class MatchingPennies(BiMatrixGame):
+    def __init__(self, H):
+        super().__init__('matchingpennies', 0.95, H)
+        self.set_matrix(
+            R=[[1, -1], [-1, 1]])
+
+
+class Inspection(BiMatrixGame):
+    def __init__(self, H):
+        super().__init__('inspection', 0.95, H)
+        self.set_matrix(
+            R=[[-1, 1], [1, -1]])
+
+
 class RandomGame(BiMatrixGame):
-    def __init__(self, H, n, m, zero_sum=True):
-        super().__init__('randomgame', 0.95, H)
-        A = RandomGame.random_reward(n, m)
-        B = -A if zero_sum else RandomGame.random_reward(n, m)
-        self.set_matrix(A=A, B=B)
+    def __init__(self, rows, cols, H):
+        super().__init__('random{}x{}'.format(rows, cols), 0.95, H)
+        R = RandomGame.random_reward(rows, cols)
+        self.set_matrix(R=R)
 
     @staticmethod
     def random_reward(n, m):

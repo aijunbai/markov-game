@@ -18,5 +18,5 @@
 #===============================================================================
 
 set -o nounset                              # Treat unset variables as an error
-rm -f *.log *.prof
+rm -f *.log *.prof data/*.pickle
 

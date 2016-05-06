@@ -8,10 +8,8 @@ import numpy as np
 __author__ = 'Aijun Bai'
 
 class BiMatrix(object):
-    def __init__(self, A=None, B=None):
-        A = np.array(A)
-        B = -A if B is None else np.array(B)
-        self._bimatrix = {0: A, 1: B}
+    def __init__(self, R=None):
+        self._bimatrix = {0: np.array(R), 1: -np.array(R)}
 
     def get_reward_for(self, i, actions):
         return self._bimatrix[i][actions[0], actions[1]]

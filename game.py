@@ -5,10 +5,10 @@ from __future__ import (absolute_import, division,
 from builtins import *
 
 from abc import ABCMeta, abstractmethod
-
+from utils import timeit
+import time
 import numpy as np
 
-import utils
 
 __author__ = 'Aijun Bai'
 
@@ -20,17 +20,19 @@ class Game(object):
         self.name = name
         self.gamma = gamma
         self.H = int(H)
-        self.players = utils.makehash()
+        self.players = {}
         self.step = 0
         self.state = None
         self.verbose = False
+
+
 
     def add_player(self, player):
         assert player.no == 0 or player.no == 1
         self.players[player.no] = player
 
-    def clear_players(self):
-        self.players = utils.makehash()
+    def configuration(self):
+        return '{}_{}_{}'.format(self.name, self.players[0].name, self.players[1].name)
 
     def set_verbose(self, verbose):
         self.verbose = verbose
@@ -39,12 +41,16 @@ class Game(object):
     def numactions(self, no):
         pass
 
+    @timeit
     def run(self):
         assert len(self.players) == 2
         assert self.state is not None
 
+        print('configuration: {}'.format(self.configuration()))
+
         for self.step in range(self.H):
-            if self.verbose: print('step: {}'.format(self.step))
+            if self.verbose:
+                print('step: {}'.format(self.step))
 
             actions = np.array([
                 self.players[0].act(self.state),

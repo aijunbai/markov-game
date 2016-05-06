@@ -13,6 +13,6 @@ profile() {
   rm -f "$1"
 }
 
-time $PYTHON -m cProfile -o "$PROF" main.py
+time $PYTHON -m cProfile -o "$PROF" main.py $*
 profile "$PROF"
 
