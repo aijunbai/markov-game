@@ -19,7 +19,7 @@ class Game(object):
     def __init__(self, name, gamma, H):
         self.name = name
         self.gamma = gamma
-        self.H = int(H)
+        self.H = H
         self.players = {}
         self.step = 0
         self.state = None
@@ -55,14 +55,14 @@ class Game(object):
             actions = np.array([
                 self.players[0].act(self.state),
                 self.players[1].act(self.state)], dtype=np.int)
-            next_state, rewards = self.simulate(actions)
+            state_prime, rewards = self.simulate(actions)
 
             for j, player in self.players.items():
                 if player.train:
                     player.update(
-                        self.state, actions[j], actions[1 - j], rewards[j], next_state)
+                        self.state, actions[j], actions[1 - j], rewards[j], state_prime)
 
-            self.state = next_state
+            self.state = state_prime
 
         for player in self.players.values():
             player.done()

@@ -14,7 +14,7 @@ Options:
   --version                show version and exit
   -l, --left               train the left agent
   -r, --right              train the right agent
-  -H, --horizon H          run the simulation for N steps [default: 10000]
+  -H, --horizon H          run the simulation for N steps [default: 100000]
   -R, --runs R             run the experiment R times [default: 1]
   -s, --seed SEED          use SEED as the random seed [default: 0]
   -v, --verbose            operate in verbose mode

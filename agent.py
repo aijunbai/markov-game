@@ -40,16 +40,16 @@ class Agent(object):
         pass
 
     @abstractmethod
-    def update(self, s, a, o, r, ns):
+    def update(self, s, a, o, r, sp):
         pass
 
     def pickle_name(self):
-        return 'data/{}_{}.pickle'.format(self.game.configuration(), self.no)
+        return 'data/{}_{}_{}.pickle'.format(self.game.name, self.name, self.no)
 
 
 class StationaryAgent(Agent):
-    def __init__(self, no, game, pi=None):
-        super().__init__(no, game, 'stationary', train=False)
+    def __init__(self, no, game, train=False, pi=None):
+        super().__init__(no, game, 'stationary', train=train)
         self.strategy = strategy.Strategy(self.numactions, pi=pi)
 
     def done(self):
@@ -58,61 +58,59 @@ class StationaryAgent(Agent):
     def act(self, s):
         return self.strategy.sample()
 
-    def update(self, s, a, o, r, ns):
+    def update(self, s, a, o, r, sp):
         pass
 
 class RandomAgent(StationaryAgent):
-    def __init__(self, no, game):
+    def __init__(self, no, game, train=False):
         n = game.numactions(no)
-        super().__init__(no, game, [1.0 / n] * n)
+        super().__init__(no, game, train=train, pi=[1.0 / n] * n)
         self.name = 'random'
 
 class BaseQAgent(Agent):
-    def __init__(self, no, game, name, train=True, episilon=0.2, N=100):
+    def __init__(self, no, game, name, train=True, episilon=0.2, N=10000):
         super().__init__(no, game, name, train=train)
         self.episilon = episilon
         self.N = N
         self.step = 0
         self.Q = None
         self.strategy = defaultdict(partial(strategy.Strategy, self.numactions))
-        self.initialized = False
+
+        if not self.train:
+            self.load()
 
     def alpha(self):
+        self.step += 1
         return self.N / (self.N + self.step)
 
-    def initialize(self):
-        if not self.initialized:
-            if not self.train:  # load
-                try:
-                    with open(self.pickle_name(), 'rb') as f:
-                        self.Q, self.strategy = pickle.load(f)
-                except IOError as e:
-                    print(e)
-            self.initialized = True
+    def load(self):
+        with open(self.pickle_name(), 'rb') as f:
+            self.Q, self.strategy = pickle.load(f)
+
+    def save(self):
+        with open(self.pickle_name(), 'wb') as f:
+            pickle.dump((self.Q, self.strategy), f, protocol=2)
 
     def done(self):
         super().done()
-
-        if self.train:
-            with open(self.pickle_name(), 'wb') as f:
-                pickle.dump((self.Q, self.strategy), f, protocol=2)
 
         if self.game.verbose:
             utils.pv('self.pickle_name()')
             utils.pv('self.Q')
             utils.pv('self.strategy')
 
-    def act(self, s):
-        self.initialize()
+        if self.train:
+            self.save()
 
+    def act(self, s):
         if self.train and random.random() < self.episilon:
             return random.randint(0, self.numactions - 1)
         else:
             return self.strategy[s].sample()
 
     @abstractmethod
-    def update(self, s, a, o, r, ns):
-        self.step += 1
+    def update(self, s, a, o, r, sp):
+        pass
 
     @abstractmethod
     def update_strategy(self, s):
@@ -123,11 +121,9 @@ class QAgent(BaseQAgent):
         super().__init__(no, game, 'q', train=train, episilon=episilon)
         self.Q = defaultdict(partial(np.random.rand, self.numactions))
 
-    def update(self, s, a, o, r, ns):
-        super().update(s, a, o, r, ns)
-
+    def update(self, s, a, o, r, sp):
         Q = self.Q[s]
-        v = np.max(self.Q[ns])
+        v = np.max(self.Q[sp])
         Q[a] += self.alpha() * (r + self.game.gamma * v - Q[a])
         self.update_strategy(s)
 
@@ -153,11 +149,9 @@ class MinimaxQAgent(BaseQAgent):
         pi = self.strategy[s].pi
         return min(np.dot(pi, Q[:, o]) for o in range(self.opp_numactions))
 
-    def update(self, s, a, o, r, ns):
-        super().update(s, a, o, r, ns)
-
+    def update(self, s, a, o, r, sp):
         Q = self.Q[s]
-        v = self.val(ns)
+        v = self.val(sp)
         Q[a, o] += self.alpha() * (r + self.game.gamma * v - Q[a, o])
         self.update_strategy(s)
 

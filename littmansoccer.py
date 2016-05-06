@@ -71,7 +71,10 @@ class Simulator(markovgame.Simulator):
         super().__init__(game)
         self.length = 5
         self.width = 4
-        self.bounds = np.array([self.length - 1, self.width - 1], dtype=np.int)
+        self.bounds = np.array(
+            [[0, self.length - 1],   # x
+             [0, self.width - 1]],   # y
+            dtype=np.int)
 
         self.episodes = 2
         self.wins = np.ones(2, dtype=np.int)
@@ -113,49 +116,50 @@ class Simulator(markovgame.Simulator):
         return state
 
     def assertion(self, state):
-        for c in range(2):
-            assert (state.positions[:, c] >= 0).all()
-            assert (state.positions[:, c] <= self.bounds[c]).all()
+        for d in range(2):
+            assert (self.bounds[d, 0] <= state.positions[:, d]).all()
+            assert (state.positions[:, d] <= self.bounds[d, 1]).all()
         assert not np.array_equal(state.positions[0], state.positions[1])
         assert state.ball == 0 or state.ball == 1
 
     def is_goal(self, position, i):
-        return (self.width - 1) / 2 <= position[1] <= (self.width + 1) / 2 \
-               and ((i == 0 and position[0] < 0) \
-                    or (i == 1 and position[0] > self.length - 1))
+        mid = 0.5 * (self.bounds[1, 0] + self.bounds[1, 1])
+        if mid - 1.0 <= position[1] <= mid + 1.0:
+            return position[0] < self.bounds[0, 0] if i == 0 else position[0] > self.bounds[0, 1]
+        return False
 
     def bound(self, position):
         for d in range(2):
-            position[d] = utils.minmax(0, position[d], self.bounds[d])
+            position[d] = utils.minmax(self.bounds[d, 0], position[d], self.bounds[d, 1])
 
     def step(self, state, actions):
         self.assertion(state)
 
         rewards = np.zeros(2)
-        next_state = state.clone()
+        state_prime = state.clone()
         order = [0, 1] if random.random() < 0.5 else [1, 0]
         goal_player = None
 
         for i in order:
             assert 0 <= actions[i] < self.numactions(i)
-            position = next_state.positions[i] + Simulator.directions[actions[i], :]
+            position = state_prime.positions[i] + Simulator.directions[actions[i], :]
 
-            if next_state.ball == i and self.is_goal(position, i):
+            if state_prime.ball == i and self.is_goal(position, i):  # goal
                 rewards[i] = 1
                 rewards[1 - i] = -1
-                next_state = self.initial_state()  # new episode
+                state_prime = self.initial_state()  # new episode
                 goal_player = i
                 break
-            elif np.array_equal(position, next_state.positions[1 - i]):  # the move does not take place
-                if next_state.ball == i:
-                    next_state.ball = 1 - i  # swithch ball possession
             else:
-                next_state.positions[i] = position
+                self.bound(position)
 
-            self.bound(next_state.positions[i])
+                if np.array_equal(position, state_prime.positions[1 - i]):  # the move does not take place
+                    state_prime.ball = 1 - state_prime.ball  # swithch ball possession
+                else:
+                    state_prime.positions[i] = position
 
         if self.game.verbose:
-            self.draw(state)
+            self.draw('state', state)
             print('actions: {}'.format([Simulator.action_names[a] for a in actions]))
             print('order: {}'.format(order))
             print('rewards: {}'.format(rewards))
@@ -165,10 +169,10 @@ class Simulator(markovgame.Simulator):
             self.goal(goal_player)
             print()
 
-        return next_state, rewards
+        return state_prime, rewards
 
-    def draw(self, state):
-        print('state: {}'.format(state))
+    def draw(self, title, state):
+        print('{}: {}'.format(title, state))
         for r in range(-1, self.width + 1):
             for c in range(-1, self.length + 1):
                 if 0 <= r <= self.width - 1 and 0 <= c <= self.length - 1:
