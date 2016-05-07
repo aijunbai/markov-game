@@ -72,7 +72,6 @@ class BaseQAgent(Agent):
         super().__init__(no, game, name, train=train)
         self.episilon = episilon
         self.N = N
-        self.step = 0
         self.Q = None
         self.strategy = defaultdict(partial(strategy.Strategy, self.numactions))
 
@@ -80,8 +79,7 @@ class BaseQAgent(Agent):
             self.load()
 
     def alpha(self):
-        self.step += 1
-        return self.N / (self.N + self.step)
+        return self.N / (self.N + self.game.t)
 
     def load(self):
         with open(self.pickle_name(), 'rb') as f:
@@ -119,7 +117,8 @@ class BaseQAgent(Agent):
 class QAgent(BaseQAgent):
     def __init__(self, no, game, train=True, episilon=0.2):
         super().__init__(no, game, 'q', train=train, episilon=episilon)
-        self.Q = defaultdict(partial(np.random.rand, self.numactions))
+        if self.Q is None:
+            self.Q = defaultdict(partial(np.random.rand, self.numactions))
 
     def update(self, s, a, o, r, sp):
         Q = self.Q[s]
@@ -135,7 +134,8 @@ class QAgent(BaseQAgent):
 class MinimaxQAgent(BaseQAgent):
     def __init__(self, no, game, train=True, episilon=0.2):
         super().__init__(no, game, 'minimax', train=train, episilon=episilon)
-        self.Q = defaultdict(partial(np.random.rand, self.numactions, self.opp_numactions))
+        if self.Q is None:
+            self.Q = defaultdict(partial(np.random.rand, self.numactions, self.opp_numactions))
 
         self.solvers = []
         for lib in ['gurobipy', 'scipy.optimize', 'pulp']:
@@ -160,7 +160,7 @@ class MinimaxQAgent(BaseQAgent):
             try:
                 self.strategy[s].update(self.lp_solve(self.Q[s], solver, lib))
             except Exception as e:
-                print('optimization using {} failed: '.format(solver, e))
+                print('optimization using {} failed: {}'.format(solver, e))
                 continue
             else:
                 break

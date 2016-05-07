@@ -20,22 +20,24 @@ class Game(object):
         self.name = name
         self.gamma = gamma
         self.H = H
+        self.t = 0
         self.players = {}
-        self.step = 0
         self.state = None
         self.verbose = False
-
-
+        self.animation = False
 
     def add_player(self, player):
         assert player.no == 0 or player.no == 1
         self.players[player.no] = player
 
     def configuration(self):
-        return '{}_{}_{}'.format(self.name, self.players[0].name, self.players[1].name)
+        return '{}({}, {})'.format(self.name, self.players[0].name, self.players[1].name)
 
     def set_verbose(self, verbose):
         self.verbose = verbose
+
+    def set_animation(self, animation):
+        self.animation = animation
 
     @abstractmethod
     def numactions(self, no):
@@ -48,9 +50,9 @@ class Game(object):
 
         print('configuration: {}'.format(self.configuration()))
 
-        for self.step in range(self.H):
+        for self.t in range(self.H):
             if self.verbose:
-                print('step: {}'.format(self.step))
+                print('step: {}'.format(self.t))
 
             actions = np.array([
                 self.players[0].act(self.state),
@@ -63,6 +65,8 @@ class Game(object):
                         self.state, actions[j], actions[1 - j], rewards[j], state_prime)
 
             self.state = state_prime
+            if self.animation:
+                time.sleep(0.25)
 
         for player in self.players.values():
             player.done()
