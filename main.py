@@ -31,6 +31,7 @@ import utils
 import bimatrixgame
 import littmansoccer
 import agent
+import pickle
 from docopt import docopt
 
 __author__ = 'Aijun Bai'
@@ -68,9 +69,23 @@ def create_agent(name, *args, **kwargs):
         return agent.MinimaxQAgent(*args, **kwargs)
     elif name == 'littmansoccerhandcoded':
         return littmansoccer.HandCodedAgent(*args, **kwargs)
+    elif name.find('pickle') != -1:
+        return load_agent(name)
     else:
         print('no such agent: {}'.format(name))
         return None
+
+
+def save_agent(a):
+    print('saving agent to {}'.format(a.pickle_name()))
+    with open(a.pickle_name(), 'wb') as f:
+        pickle.dump(a, f, protocol=2)
+
+
+def load_agent(file_name):
+    print('loading agent from {}'.format(file_name))
+    with open(file_name, 'rb') as f:
+        return pickle.load(f)
 
 
 if __name__ == '__main__':
@@ -95,8 +110,12 @@ if __name__ == '__main__':
         g = create_game(game, H)
 
         for j in range(2):
-            g.add_player(create_agent(agents[j], j, g, train=modes[j]))
+            g.add_player(create_agent(agents[j], j, g))
 
         g.set_verbose(verbose)
         g.set_animation(animation)
-        g.run()
+        g.run(modes)
+
+    for i in range(2):
+        if modes[i]:
+            save_agent(g.players[i])

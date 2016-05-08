@@ -14,7 +14,6 @@ import numpy as np
 
 import importlib
 import utils
-import pickle
 import strategy
 
 __author__ = 'Aijun Bai'
@@ -23,11 +22,10 @@ __author__ = 'Aijun Bai'
 class Agent(object):
     __metaclass__ = ABCMeta
 
-    def __init__(self, no, game, name, train=True):
+    def __init__(self, no, game, name):
         self.no = no  # player number
         self.name = name
         self.game = game
-        self.train = train
         self.numactions = game.numactions(self.no)
         self.opp_numactions = game.numactions(1 - self.no)
 
@@ -36,7 +34,7 @@ class Agent(object):
         print('agent {}_{} done...'.format(self.name, self.no))
 
     @abstractmethod
-    def act(self, s):
+    def act(self, s, exploration):
         pass
 
     @abstractmethod
@@ -48,46 +46,35 @@ class Agent(object):
 
 
 class StationaryAgent(Agent):
-    def __init__(self, no, game, train=False, pi=None):
-        super().__init__(no, game, 'stationary', train=train)
+    def __init__(self, no, game, pi=None):
+        super().__init__(no, game, 'stationary')
         self.strategy = strategy.Strategy(self.numactions, pi=pi)
 
     def done(self):
         super().done()
 
-    def act(self, s):
+    def act(self, s, exploration):
         return self.strategy.sample()
 
     def update(self, s, a, o, r, sp):
         pass
 
 class RandomAgent(StationaryAgent):
-    def __init__(self, no, game, train=False):
+    def __init__(self, no, game):
         n = game.numactions(no)
-        super().__init__(no, game, train=train, pi=[1.0 / n] * n)
+        super().__init__(no, game, pi=[1.0 / n] * n)
         self.name = 'random'
 
 class BaseQAgent(Agent):
-    def __init__(self, no, game, name, train=True, episilon=0.2, N=10000):
-        super().__init__(no, game, name, train=train)
+    def __init__(self, no, game, name, episilon=0.2, N=10000):
+        super().__init__(no, game, name)
         self.episilon = episilon
         self.N = N
         self.Q = None
         self.strategy = defaultdict(partial(strategy.Strategy, self.numactions))
 
-        if not self.train:
-            self.load()
-
     def alpha(self):
         return self.N / (self.N + self.game.t)
-
-    def load(self):
-        with open(self.pickle_name(), 'rb') as f:
-            self.Q, self.strategy = pickle.load(f)
-
-    def save(self):
-        with open(self.pickle_name(), 'wb') as f:
-            pickle.dump((self.Q, self.strategy), f, protocol=2)
 
     def done(self):
         super().done()
@@ -97,11 +84,8 @@ class BaseQAgent(Agent):
             utils.pv('self.Q')
             utils.pv('self.strategy')
 
-        if self.train:
-            self.save()
-
-    def act(self, s):
-        if self.train and random.random() < self.episilon:
+    def act(self, s, exploration):
+        if exploration and random.random() < self.episilon:
             return random.randint(0, self.numactions - 1)
         else:
             return self.strategy[s].sample()
@@ -115,10 +99,9 @@ class BaseQAgent(Agent):
         pass
 
 class QAgent(BaseQAgent):
-    def __init__(self, no, game, train=True, episilon=0.2):
-        super().__init__(no, game, 'q', train=train, episilon=episilon)
-        if self.Q is None:
-            self.Q = defaultdict(partial(np.random.rand, self.numactions))
+    def __init__(self, no, game, episilon=0.2):
+        super().__init__(no, game, 'q', episilon=episilon)
+        self.Q = defaultdict(partial(np.random.rand, self.numactions))
 
     def update(self, s, a, o, r, sp):
         Q = self.Q[s]
@@ -132,10 +115,9 @@ class QAgent(BaseQAgent):
 
 
 class MinimaxQAgent(BaseQAgent):
-    def __init__(self, no, game, train=True, episilon=0.2):
-        super().__init__(no, game, 'minimax', train=train, episilon=episilon)
-        if self.Q is None:
-            self.Q = defaultdict(partial(np.random.rand, self.numactions, self.opp_numactions))
+    def __init__(self, no, game, episilon=0.2):
+        super().__init__(no, game, 'minimax', episilon=episilon)
+        self.Q = defaultdict(partial(np.random.rand, self.numactions, self.opp_numactions))
 
         self.solvers = []
         for lib in ['gurobipy', 'scipy.optimize', 'pulp']:

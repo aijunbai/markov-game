@@ -17,7 +17,7 @@ __author__ = 'Aijun Bai'
 class State(object):
     def __init__(self):
         self.ball = 0  # the player holding the ball
-        self.positions = np.zeros((2, 2), dtype=np.int)
+        self.positions = np.zeros((2, 2), dtype=np.int8)
 
     def clone(self):
         cloned = State()
@@ -63,15 +63,15 @@ class Action(IntEnum):
     @classmethod
     def direction(cls, a):
         if a == cls.north:
-            return np.array([0, 1], dtype=np.int)
+            return np.array([0, 1], dtype=np.int8)
         elif a == cls.east:
-            return np.array([1, 0], dtype=np.int)
+            return np.array([1, 0], dtype=np.int8)
         elif a == cls.south:
-            return np.array([0, -1], dtype=np.int)
+            return np.array([0, -1], dtype=np.int8)
         elif a == cls.west:
-            return np.array([-1, 0], dtype=np.int)
+            return np.array([-1, 0], dtype=np.int8)
         elif a == cls.stand:
-            return np.array([0, 0], dtype=np.int)
+            return np.array([0, 0], dtype=np.int8)
         else:
             raise Exception('unrecognized action: {}'.format(a))
 
@@ -85,7 +85,7 @@ class Simulator(markovgame.Simulator):
         self.bounds = np.array(
             [[0, self.length - 1],   # x
              [0, self.width - 1]],   # y
-            dtype=np.int)
+            dtype=np.int8)
         self.center = self.bounds[:, 1] / 2
 
         self.episodes = 2
@@ -105,12 +105,6 @@ class Simulator(markovgame.Simulator):
         for i in range(2):
             print('{}: win {} ({}%)'.format(
                 i, self.wins[i], self.wins[i] / self.episodes * 100))
-
-    def random_position(self):
-        return np.array([
-            np.random.randint(0, self.length),
-            np.random.randint(0, self.width)],
-            dtype=np.int)
 
     def initial_state(self):
         state = State()
@@ -209,13 +203,13 @@ class LittmanSoccer(markovgame.MarkovGame):
 
 
 class HandCodedAgent(Agent):
-    def __init__(self, no, game, train=False):
-        super().__init__(no, game, 'handcoded', train=train)
+    def __init__(self, no, game):
+        super().__init__(no, game, 'handcoded')
 
     def done(self):
         super().done()
 
-    def act(self, s):
+    def act(self, s, exploration):
         if s.ball == self.no:  # dribble
             mid = self.game.simulator.center[1]
             if s.positions[self.no][1] < mid - 1.0:

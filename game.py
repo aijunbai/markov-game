@@ -44,7 +44,7 @@ class Game(object):
         pass
 
     @timeit
-    def run(self):
+    def run(self, modes):
         assert len(self.players) == 2
         assert self.state is not None
 
@@ -55,12 +55,12 @@ class Game(object):
                 print('step: {}'.format(self.t))
 
             actions = np.array([
-                self.players[0].act(self.state),
-                self.players[1].act(self.state)], dtype=np.int)
+                self.players[0].act(self.state, modes[0]),
+                self.players[1].act(self.state, modes[1])], dtype=np.int8)
             state_prime, rewards = self.simulate(actions)
 
             for j, player in self.players.items():
-                if player.train:
+                if modes[j]:
                     player.update(
                         self.state, actions[j], actions[1 - j], rewards[j], state_prime)
 
