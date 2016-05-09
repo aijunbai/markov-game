@@ -15,7 +15,7 @@ Options:
   -l, --left               train the left agent
   -r, --right              train the right agent
   -t, --trainall           train both left and right agents
-  -H, --horizon H          run the simulation for N steps [default: 100000]
+  -H, --horizon H          run the simulation for N steps [default: 1M]
   -R, --runs R             run the experiment R times [default: 1]
   -a, --animation          run the experiment in animation mode
   -s, --seed SEED          use SEED as the random seed [default: 0]

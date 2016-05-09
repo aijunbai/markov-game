@@ -56,9 +56,10 @@ class Game(object):
             if self.verbose:
                 print('step: {}'.format(t))
 
-            actions = np.array([
-                self.players[0].act(self.state, modes[0]),
-                self.players[1].act(self.state, modes[1])], dtype=np.int8)
+            actions = np.array(
+                [self.players[0].act(self.state, modes[0], self.verbose),
+                 self.players[1].act(self.state, modes[1], self.verbose)],
+                dtype=np.int8)
             state_prime, rewards = self.simulate(actions)
 
             for j, player in self.players.items():

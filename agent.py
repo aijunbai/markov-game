@@ -35,7 +35,7 @@ class Agent(object):
         print('agent {}_{} done...'.format(self.name, self.no))
 
     @abstractmethod
-    def act(self, s, exploration):
+    def act(self, s, exploration, verbose):
         pass
 
     @abstractmethod
@@ -60,7 +60,7 @@ class StationaryAgent(Agent):
     def done(self, verbose):
         super().done(verbose)
 
-    def act(self, s, exploration):
+    def act(self, s, exploration, verbose):
         return self.strategy.sample()
 
     def update(self, s, a, o, r, sp, t):
@@ -93,10 +93,12 @@ class BaseQAgent(Agent):
             utils.pv('self.Q')
             utils.pv('self.strategy')
 
-    def act(self, s, exploration):
+    def act(self, s, exploration, verbose):
         if exploration and random.random() < self.episilon:
             return random.randint(0, self.numactions - 1)
         else:
+            if verbose:
+                print('strategy of {}: {}'.format(self.no, self.strategy[s]))
             return self.strategy[s].sample()
 
     @abstractmethod

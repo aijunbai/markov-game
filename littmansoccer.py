@@ -210,7 +210,7 @@ class HandCodedAgent(Agent):
     def done(self, verbose):
         super().done(verbose)
 
-    def act(self, s, exploration):
+    def act(self, s, exploration, verbose):
         if s.ball == self.no:  # dribble
             if s.positions[self.no][1] < self.mid - 1.0:
                 return Action.north
