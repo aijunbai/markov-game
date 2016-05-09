@@ -205,23 +205,23 @@ class LittmanSoccer(markovgame.MarkovGame):
 class HandCodedAgent(Agent):
     def __init__(self, no, game):
         super().__init__(no, game, 'handcoded')
+        self.mid = game.simulator.center[1]
 
-    def done(self):
-        super().done()
+    def done(self, verbose):
+        super().done(verbose)
 
     def act(self, s, exploration):
         if s.ball == self.no:  # dribble
-            mid = self.game.simulator.center[1]
-            if s.positions[self.no][1] < mid - 1.0:
+            if s.positions[self.no][1] < self.mid - 1.0:
                 return Action.north
-            elif s.positions[self.no][1] <= mid + 1.0:
+            elif s.positions[self.no][1] <= self.mid + 1.0:
                 return Action.west if self.no == 0 else Action.east
             else:
                 return Action.south
         else:  # chase
             return HandCodedAgent.moveto(s.positions[self.no], s.positions[1 - self.no])
 
-    def update(self, s, a, o, r, sp):
+    def update(self, s, a, o, r, sp, t):
         pass
 
     @staticmethod

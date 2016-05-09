@@ -13,6 +13,7 @@ from functools import partial
 import numpy as np
 
 import importlib
+import humanfriendly
 import utils
 import strategy
 
@@ -25,12 +26,12 @@ class Agent(object):
     def __init__(self, no, game, name):
         self.no = no  # player number
         self.name = name
-        self.game = game
+        self.gamma = game.gamma
         self.numactions = game.numactions(self.no)
         self.opp_numactions = game.numactions(1 - self.no)
 
     @abstractmethod
-    def done(self):
+    def done(self, verbose):
         print('agent {}_{} done...'.format(self.name, self.no))
 
     @abstractmethod
@@ -38,11 +39,17 @@ class Agent(object):
         pass
 
     @abstractmethod
-    def update(self, s, a, o, r, sp):
+    def update(self, s, a, o, r, sp, t):
         pass
 
-    def pickle_name(self):
-        return 'data/{}_{}_{}.pickle'.format(self.game.name, self.name, self.no)
+    @staticmethod
+    def format(n):
+        s = humanfriendly.format_size(n)
+        return s.replace(' ', '').replace('byte', '').replace('bytes', '').rstrip('B')
+
+    def pickle_name(self, game_name, H):
+        return 'data/{}_{}_{}_{}.pickle'.format(
+            game_name, self.name, self.no, Agent.format(H))
 
 
 class StationaryAgent(Agent):
@@ -50,20 +57,22 @@ class StationaryAgent(Agent):
         super().__init__(no, game, 'stationary')
         self.strategy = strategy.Strategy(self.numactions, pi=pi)
 
-    def done(self):
-        super().done()
+    def done(self, verbose):
+        super().done(verbose)
 
     def act(self, s, exploration):
         return self.strategy.sample()
 
-    def update(self, s, a, o, r, sp):
+    def update(self, s, a, o, r, sp, t):
         pass
+
 
 class RandomAgent(StationaryAgent):
     def __init__(self, no, game):
         n = game.numactions(no)
         super().__init__(no, game, pi=[1.0 / n] * n)
         self.name = 'random'
+
 
 class BaseQAgent(Agent):
     def __init__(self, no, game, name, episilon=0.2, N=10000):
@@ -73,13 +82,13 @@ class BaseQAgent(Agent):
         self.Q = None
         self.strategy = defaultdict(partial(strategy.Strategy, self.numactions))
 
-    def alpha(self):
-        return self.N / (self.N + self.game.t)
+    def alpha(self, t):
+        return self.N / (self.N + t)
 
-    def done(self):
-        super().done()
+    def done(self, verbose):
+        super().done(verbose)
 
-        if self.game.verbose:
+        if verbose:
             utils.pv('self.pickle_name()')
             utils.pv('self.Q')
             utils.pv('self.strategy')
@@ -91,7 +100,7 @@ class BaseQAgent(Agent):
             return self.strategy[s].sample()
 
     @abstractmethod
-    def update(self, s, a, o, r, sp):
+    def update(self, s, a, o, r, sp, t):
         pass
 
     @abstractmethod
@@ -103,10 +112,10 @@ class QAgent(BaseQAgent):
         super().__init__(no, game, 'q', episilon=episilon)
         self.Q = defaultdict(partial(np.random.rand, self.numactions))
 
-    def update(self, s, a, o, r, sp):
+    def update(self, s, a, o, r, sp, t):
         Q = self.Q[s]
         v = np.max(self.Q[sp])
-        Q[a] += self.alpha() * (r + self.game.gamma * v - Q[a])
+        Q[a] += self.alpha(t) * (r + self.gamma * v - Q[a])
         self.update_strategy(s)
 
     def update_strategy(self, s):
@@ -118,26 +127,25 @@ class MinimaxQAgent(BaseQAgent):
     def __init__(self, no, game, episilon=0.2):
         super().__init__(no, game, 'minimax', episilon=episilon)
         self.Q = defaultdict(partial(np.random.rand, self.numactions, self.opp_numactions))
-
         self.solvers = []
-        for lib in ['gurobipy', 'scipy.optimize', 'pulp']:
-            try:
-                self.solvers.append((lib, importlib.import_module(lib)))
-            except:
-                pass
+
+    def done(self, verbose):
+        super().done(verbose)
+        self.solvers = []  # preparing for pickling
 
     def val(self, s):
         Q = self.Q[s]
         pi = self.strategy[s].pi
         return min(np.dot(pi, Q[:, o]) for o in range(self.opp_numactions))
 
-    def update(self, s, a, o, r, sp):
+    def update(self, s, a, o, r, sp, t):
         Q = self.Q[s]
         v = self.val(sp)
-        Q[a, o] += self.alpha() * (r + self.game.gamma * v - Q[a, o])
+        Q[a, o] += self.alpha(t) * (r + self.gamma * v - Q[a, o])
         self.update_strategy(s)
 
     def update_strategy(self, s):
+        self.initialize_solvers()
         for solver, lib in self.solvers:
             try:
                 self.strategy[s].update(self.lp_solve(self.Q[s], solver, lib))
@@ -147,7 +155,17 @@ class MinimaxQAgent(BaseQAgent):
             else:
                 break
 
+    def initialize_solvers(self):
+        if not self.solvers:
+            for lib in ['gurobipy', 'scipy.optimize', 'pulp']:
+                try:
+                    self.solvers.append((lib, importlib.import_module(lib)))
+                except:
+                    pass
+
     def lp_solve(self, Q, solver, lib):
+        ret = None
+
         if solver == 'scipy.optimize':
             c = np.append(np.zeros(self.numactions), -1.0)
             A_ub = np.c_[-Q.T, np.ones(self.opp_numactions)]

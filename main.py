@@ -31,6 +31,7 @@ import utils
 import bimatrixgame
 import littmansoccer
 import agent
+import humanfriendly
 import pickle
 from docopt import docopt
 
@@ -76,9 +77,9 @@ def create_agent(name, *args, **kwargs):
         return None
 
 
-def save_agent(a):
-    print('saving agent to {}'.format(a.pickle_name()))
-    with open(a.pickle_name(), 'wb') as f:
+def save_agent(g, a):
+    print('saving agent to {}'.format(a.pickle_name(g.name, g.H)))
+    with open(a.pickle_name(g.name, g.H), 'wb') as f:
         pickle.dump(a, f, protocol=2)
 
 
@@ -91,8 +92,8 @@ def load_agent(file_name):
 if __name__ == '__main__':
     arguments = docopt(__doc__, version='0.1.1rc')
 
-    N = int(arguments['--runs'])
-    H = int(arguments['--horizon'])
+    R = humanfriendly.parse_size(arguments['--runs'])
+    H = humanfriendly.parse_size(arguments['--horizon'])
     modes = {0: arguments['--left'], 1: arguments['--right']}
     trainall = arguments['--trainall']
     agents = {0: arguments['<left>'], 1: arguments['<right>']}
@@ -106,16 +107,16 @@ if __name__ == '__main__':
     if trainall:
         modes[0] = modes[1] = True
 
-    for i in range(N):
+    for i in range(R):
         g = create_game(game, H)
 
         for j in range(2):
-            g.add_player(create_agent(agents[j], j, g))
+            g.add_player(j, create_agent(agents[j], j, g))
 
         g.set_verbose(verbose)
         g.set_animation(animation)
         g.run(modes)
 
-    for i in range(2):
-        if modes[i]:
-            save_agent(g.players[i])
+        for j in range(2):
+            if modes[j]:
+                save_agent(g, g.players[j])

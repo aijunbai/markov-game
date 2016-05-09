@@ -26,9 +26,9 @@ class Game(object):
         self.verbose = False
         self.animation = False
 
-    def add_player(self, player):
+    def add_player(self, i, player):
         assert player.no == 0 or player.no == 1
-        self.players[player.no] = player
+        self.players[i] = player
 
     def configuration(self):
         return '{}({}, {})'.format(self.name, self.players[0].name, self.players[1].name)
@@ -50,9 +50,11 @@ class Game(object):
 
         print('configuration: {}'.format(self.configuration()))
 
-        for self.t in range(self.H):
+        for t in range(self.H):
+            self.t = t
+
             if self.verbose:
-                print('step: {}'.format(self.t))
+                print('step: {}'.format(t))
 
             actions = np.array([
                 self.players[0].act(self.state, modes[0]),
@@ -62,14 +64,14 @@ class Game(object):
             for j, player in self.players.items():
                 if modes[j]:
                     player.update(
-                        self.state, actions[j], actions[1 - j], rewards[j], state_prime)
+                        self.state, actions[j], actions[1 - j], rewards[j], state_prime, t)
 
             self.state = state_prime
             if self.animation:
                 time.sleep(0.25)
 
         for player in self.players.values():
-            player.done()
+            player.done(self.verbose)
 
     @abstractmethod
     def simulate(self, actions):  # state, actions -> state, reward
