@@ -117,19 +117,6 @@ class Simulator(markovgame.Simulator):
     def symmetric_action(action):
         return Action.symmetric(action)
 
-    def observation(self, state, no):
-        """
-        generate observation for player no according to state:
-        the agent is alwasy considering itself as no=0
-        """
-        if no == 0:
-            return state
-        else:
-            # translate from no=1 to no=0
-            positions = self.bounds[:, 1] - state.positions
-            positions[[0, 1]] = positions[[1, 0]]
-            return State(ball=1 - state.ball, positions=positions)
-
     def goal(self, i):
         self.episodes += 1
         self.wins[i] += 1
@@ -146,7 +133,6 @@ class Simulator(markovgame.Simulator):
         state = State(ball=random.randint(0, 1))
         state.positions[0] = np.floor(self.center + np.ones(2))
         state.positions[1] = np.ceil(self.center - np.ones(2))
-        self.assertion(state)
         return state
 
     def assertion(self, state):
@@ -168,12 +154,6 @@ class Simulator(markovgame.Simulator):
             position[d] = utils.minmax(self.bounds[d, 0], position[d], self.bounds[d, 1])
 
     def step(self, state, actions):
-        """
-        run the simulator for one timestep
-        :param state: state in global frame
-        :param actions: joint actions returned by agents in local frame
-        :return:
-        """
         self.assertion(state)
 
         rewards = np.zeros(2)
@@ -188,13 +168,9 @@ class Simulator(markovgame.Simulator):
 
         for j in order:
             action = actions[j]
-
             if random.random() < self.random_threshold:
                 action = random.choice(list(Action))
-            if self.game.verbose:
-                print('actual action of {}: {}'.format(j, [Action(action).name]))
             position = state_prime.positions[j] + Action.direction(action)
-
             if state_prime.ball == j and self.is_goal(position, j):  # goal
                 rewards[j] = 1
                 rewards[1 - j] = -1
@@ -203,9 +179,8 @@ class Simulator(markovgame.Simulator):
                 break
             else:
                 self.bound(position)
-
-                if np.array_equal(position, state_prime.positions[1 - j]):  # the move does not take place
-                    state_prime.ball = random.randint(0, 1)  # swithch ball possession
+                if np.array_equal(position, state_prime.positions[1 - j]):
+                    state_prime.ball = 1 - j
                 else:
                     state_prime.positions[j] = position
 

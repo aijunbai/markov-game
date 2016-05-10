@@ -20,5 +20,5 @@
 set -o nounset                              # Treat unset variables as an error
 PYTHON=`which python2`
 
-mkdir -p data
+mkdir -p data result
 

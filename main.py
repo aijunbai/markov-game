@@ -18,7 +18,6 @@ Options:
   -R, --save_right R       save the right agent as data/R.pickle [default: ]
   -t, --trainall           train both left and right agents
   -H, --horizon H          run the simulation for N steps [default: 10k]
-  -R, --runs R             run the experiment R times [default: 1]
   -a, --animation          run the experiment in animation mode
   -s, --seed SEED          use SEED as the random seed [default: 0]
   -v, --verbose            operate in verbose mode
@@ -94,7 +93,6 @@ def load_agent(file_name):
 if __name__ == '__main__':
     arguments = docopt(__doc__, version='0.1.1rc')
 
-    R = humanfriendly.parse_size(arguments['--runs'])
     H = humanfriendly.parse_size(arguments['--horizon'])
     modes = {0: arguments['--left'], 1: arguments['--right']}
     trainall = arguments['--trainall']
@@ -110,20 +108,19 @@ if __name__ == '__main__':
     if trainall:
         modes[0] = modes[1] = True
 
-    for i in range(R):
-        G = create_game(game, H)
+    G = create_game(game, H)
 
-        for j in range(2):
-            G.add_player(j, create_agent(agents[j], j, G))
+    for j in range(2):
+        G.add_player(j, create_agent(agents[j], j, G))
 
-        G.set_verbose(verbose)
-        G.set_animation(animation)
-        G.run(modes)
+    G.set_verbose(verbose)
+    G.set_animation(animation)
+    G.run(modes)
 
-        for j in range(2):
-            if modes[j]:
-                if len(pickles[j]):
-                    pickles[j] = 'data/' + pickles[j] + '.pickle'
-                else:
-                    pickles[j] = G.players[j].pickle_name(j, G)
-                save_agent(G.players[j], pickles[j])
+    for j in range(2):
+        if modes[j]:
+            if len(pickles[j]):
+                pickles[j] = 'data/' + pickles[j] + '.pickle'
+            else:
+                pickles[j] = G.players[j].pickle_name(j, G)
+            save_agent(G.players[j], pickles[j])
