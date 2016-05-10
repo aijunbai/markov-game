@@ -5,14 +5,12 @@ from __future__ import (absolute_import, division,
 
 from builtins import *
 import numpy as np
+
 __author__ = 'Aijun Bai'
 
 class Strategy(object):
     def __init__(self, n, pi=None):
-        if pi is not None:
-            self.pi = np.array(pi)
-        else:
-            self.pi = np.random.dirichlet([1] * n)
+        self.pi = np.array(pi) if pi is not None else np.random.dirichlet([1.0] * n)
 
     def sample(self):
         return np.random.choice(self.pi.size, size=1, p=self.pi)[0]

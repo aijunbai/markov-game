@@ -23,48 +23,37 @@ __author__ = 'Aijun Bai'
 class Agent(object):
     __metaclass__ = ABCMeta
 
-    def __init__(self, no, game, name):
-        self.no = no  # player number
+    def __init__(self, name, no, game):
         self.name = name
-        self.gamma = game.gamma
-        self.numactions = game.numactions(self.no)
-        self.opp_numactions = game.numactions(1 - self.no)
+        print('{}: creating agent {}_{}...'.format(game, self.name, no))
+
+    def done(self, no, game):
+        print('{}: finishing agent {}_{}...'.format(game, self.name, no))
 
     @abstractmethod
-    def done(self, verbose):
-        print('agent {}_{} done...'.format(self.name, self.no))
-
-    @abstractmethod
-    def act(self, s, exploration, verbose):
+    def act(self, s, exploration, no, game):
         pass
 
-    @abstractmethod
-    def update(self, s, a, o, r, sp, t):
+    def update(self, s, a, o, r, sp, no, game):
         pass
 
     @staticmethod
     def format(n):
         s = humanfriendly.format_size(n)
-        return s.replace(' ', '').replace('byte', '').replace('bytes', '').rstrip('B')
+        return s.replace(' ', '').replace('bytes', '').replace('byte', '').rstrip('B')
 
-    def pickle_name(self, game_name, H):
+    def pickle_name(self, no, game):
         return 'data/{}_{}_{}_{}.pickle'.format(
-            game_name, self.name, self.no, Agent.format(H))
+            game.name, self.name, no, Agent.format(game.H))
 
 
 class StationaryAgent(Agent):
     def __init__(self, no, game, pi=None):
-        super().__init__(no, game, 'stationary')
-        self.strategy = strategy.Strategy(self.numactions, pi=pi)
+        super().__init__('stationary', no, game)
+        self.strategy = strategy.Strategy(game.numactions(no), pi=pi)
 
-    def done(self, verbose):
-        super().done(verbose)
-
-    def act(self, s, exploration, verbose):
+    def act(self, s, exploration, no, game):
         return self.strategy.sample()
-
-    def update(self, s, a, o, r, sp, t):
-        pass
 
 
 class RandomAgent(StationaryAgent):
@@ -75,87 +64,115 @@ class RandomAgent(StationaryAgent):
 
 
 class BaseQAgent(Agent):
-    def __init__(self, no, game, name, episilon=0.2, N=10000):
-        super().__init__(no, game, name)
+    def __init__(self, name, no, game, episilon=0.2, N=10000):
+        super().__init__(name, no, game)
         self.episilon = episilon
         self.N = N
         self.Q = None
-        self.strategy = defaultdict(partial(strategy.Strategy, self.numactions))
+        self.strategy = {0: defaultdict(partial(strategy.Strategy, game.numactions(0))),
+                         1: defaultdict(partial(strategy.Strategy, game.numactions(1)))}
 
     def alpha(self, t):
         return self.N / (self.N + t)
 
-    def done(self, verbose):
-        super().done(verbose)
+    def done(self, no, game):
+        super().done(no, game)
 
-        if verbose:
-            utils.pv('self.pickle_name()')
+        if game.verbose:
+            utils.pv('self.name')
             utils.pv('self.Q')
             utils.pv('self.strategy')
 
-    def act(self, s, exploration, verbose):
+    def act(self, s, exploration, no, game):
         if exploration and random.random() < self.episilon:
-            return random.randint(0, self.numactions - 1)
+            return random.randint(0, game.numactions(no) - 1)
         else:
-            if verbose:
-                print('strategy of {}: {}'.format(self.no, self.strategy[s]))
-            return self.strategy[s].sample()
+            if game.verbose:
+                print('strategy of {}: {}'.format(no, self.strategy[no][s]))
+            return self.strategy[no][s].sample()
 
     @abstractmethod
-    def update(self, s, a, o, r, sp, t):
+    def update(self, s, a, o, r, sp, no, game):
         pass
 
     @abstractmethod
-    def update_strategy(self, s):
+    def update_strategy(self, s, no, game):
+        pass
+
+    @abstractmethod
+    def do_symmetry(self, s, no, game):
         pass
 
 class QAgent(BaseQAgent):
-    def __init__(self, no, game, episilon=0.2):
-        super().__init__(no, game, 'q', episilon=episilon)
-        self.Q = defaultdict(partial(np.random.rand, self.numactions))
+    def __init__(self, no, game):
+        super().__init__('q', no, game)
+        self.Q = {0: defaultdict(partial(np.random.rand, game.numactions(0))),
+                  1: defaultdict(partial(np.random.rand, game.numactions(1)))}
 
-    def update(self, s, a, o, r, sp, t):
-        Q = self.Q[s]
-        v = np.max(self.Q[sp])
-        Q[a] += self.alpha(t) * (r + self.gamma * v - Q[a])
-        self.update_strategy(s)
+    def update(self, s, a, o, r, sp, no, game):
+        Q = self.Q[no][s]
+        v = np.max(self.Q[no][sp])
+        Q[a] += self.alpha(game.t) * (r + game.gamma * v - Q[a])
+        self.update_strategy(s, no, game)
 
-    def update_strategy(self, s):
-        Q = self.Q[s]
-        self.strategy[s].update((Q == max(Q)).astype(np.double))
+        if game.is_symmetric:
+            self.do_symmetry(s, no, game)
+
+    def update_strategy(self, s, no, game):
+        Q = self.Q[no][s]
+        self.strategy[no][s].update((Q == max(Q)).astype(np.double))
+
+    def do_symmetry(self, s, no, game):
+        s2 = game.symmetric_state(s)
+        for a in range(game.numactions(no)):
+            self.strategy[1 - no][s2].pi[game.symmetric_action(a)] = self.strategy[no][s].pi[a]
+            self.Q[1 - no][s2][game.symmetric_action(a)] = self.Q[no][s][a]
 
 
 class MinimaxQAgent(BaseQAgent):
-    def __init__(self, no, game, episilon=0.2):
-        super().__init__(no, game, 'minimax', episilon=episilon)
-        self.Q = defaultdict(partial(np.random.rand, self.numactions, self.opp_numactions))
+    def __init__(self, no, game):
+        super().__init__('minimax', no, game)
         self.solvers = []
+        self.Q = {0: defaultdict(partial(np.random.rand, game.numactions(0), game.numactions(1))),
+                  1: defaultdict(partial(np.random.rand, game.numactions(1), game.numactions(0)))}
 
-    def done(self, verbose):
-        super().done(verbose)
+    def done(self, no, game):
+        super().done(no, game)
         self.solvers = []  # preparing for pickling
 
-    def val(self, s):
-        Q = self.Q[s]
-        pi = self.strategy[s].pi
-        return min(np.dot(pi, Q[:, o]) for o in range(self.opp_numactions))
+    def val(self, s, no, game):
+        Q = self.Q[no][s]
+        pi = self.strategy[no][s].pi
+        return min(np.dot(pi, Q[:, o]) for o in range(game.numactions(1 - no)))
 
-    def update(self, s, a, o, r, sp, t):
-        Q = self.Q[s]
-        v = self.val(sp)
-        Q[a, o] += self.alpha(t) * (r + self.gamma * v - Q[a, o])
-        self.update_strategy(s)
+    def update(self, s, a, o, r, sp, no, game):
+        Q = self.Q[no][s]
+        v = self.val(sp, no, game)
+        Q[a, o] += self.alpha(game.t) * (r + game.gamma * v - Q[a, o])
+        self.update_strategy(s, no, game)
 
-    def update_strategy(self, s):
+        if game.is_symmetric:
+            self.do_symmetry(s, no, game)
+
+    def update_strategy(self, s, no, game):
         self.initialize_solvers()
         for solver, lib in self.solvers:
             try:
-                self.strategy[s].update(self.lp_solve(self.Q[s], solver, lib))
+                self.strategy[no][s].update(
+                    MinimaxQAgent.lp_solve(self.Q[no][s], solver, lib, no, game))
             except Exception as e:
                 print('optimization using {} failed: {}'.format(solver, e))
                 continue
             else:
                 break
+
+    def do_symmetry(self, s, no, game):
+        s2 = game.symmetric_state(s)
+        for a in range(game.numactions(no)):
+            self.strategy[1 - no][s2].pi[game.symmetric_action(a)] = self.strategy[no][s].pi[a]
+            for o in range(game.numactions(1 - no)):
+                self.Q[1 - no][s2][game.symmetric_action(a), game.symmetric_action(o)] \
+                    = self.Q[no][s][a, o]
 
     def initialize_solvers(self):
         if not self.solvers:
@@ -165,16 +182,19 @@ class MinimaxQAgent(BaseQAgent):
                 except:
                     pass
 
-    def lp_solve(self, Q, solver, lib):
+    @staticmethod
+    def lp_solve(Q, solver, lib, no, game):
         ret = None
+        numactions =  game.numactions(no)
+        opp_numactions = game.numactions(1 - no)
 
         if solver == 'scipy.optimize':
-            c = np.append(np.zeros(self.numactions), -1.0)
-            A_ub = np.c_[-Q.T, np.ones(self.opp_numactions)]
-            b_ub = np.zeros(self.opp_numactions)
-            A_eq = np.array([np.append(np.ones(self.numactions), 0.0)])
+            c = np.append(np.zeros(numactions), -1.0)
+            A_ub = np.c_[-Q.T, np.ones(opp_numactions)]
+            b_ub = np.zeros(opp_numactions)
+            A_eq = np.array([np.append(np.ones(numactions), 0.0)])
             b_eq = np.array([1.0])
-            bounds = [(0.0, 1.0) for _ in range(self.numactions)] + [(-np.inf, np.inf)]
+            bounds = [(0.0, 1.0) for _ in range(numactions)] + [(-np.inf, np.inf)]
             res = lib.linprog(
                 c=c, A_ub=A_ub, b_ub=b_ub, A_eq=A_eq, b_eq=b_eq, bounds=bounds)
             ret = res.x[:-1]
@@ -185,27 +205,27 @@ class MinimaxQAgent(BaseQAgent):
             m.setParam('LogToConsole', 0)
             v = m.addVar(name='v')
             pi = {}
-            for a in range(self.numactions):
+            for a in range(numactions):
                 pi[a] = m.addVar(lb=0.0, ub=1.0, name='pi_{}'.format(a))
             m.update()
             m.setObjective(v, sense=lib.GRB.MAXIMIZE)
-            for o in range(self.opp_numactions):
+            for o in range(opp_numactions):
                 m.addConstr(
-                    lib.quicksum(pi[a] * Q[a, o] for a in range(self.numactions)) >= v,
+                    lib.quicksum(pi[a] * Q[a, o] for a in range(numactions)) >= v,
                     name='c_o{}'.format(o))
-            m.addConstr(lib.quicksum(pi[a] for a in range(self.numactions)) == 1, name='c_pi')
+            m.addConstr(lib.quicksum(pi[a] for a in range(numactions)) == 1, name='c_pi')
             m.optimize()
-            ret = np.array([pi[a].X for a in range(self.numactions)])
+            ret = np.array([pi[a].X for a in range(numactions)])
         elif solver == 'pulp':
             v = lib.LpVariable('v')
-            pi = lib.LpVariable.dicts('pi', list(range(self.numactions)), 0, 1)
+            pi = lib.LpVariable.dicts('pi', list(range(numactions)), 0, 1)
             prob = lib.LpProblem('LP', lib.LpMaximize)
             prob += v
-            for o in range(self.opp_numactions):
-                prob += lib.lpSum(pi[a] * Q[a, o] for a in range(self.numactions)) >= v
-            prob += lib.lpSum(pi[a] for a in range(self.numactions)) == 1
+            for o in range(opp_numactions):
+                prob += lib.lpSum(pi[a] * Q[a, o] for a in range(numactions)) >= v
+            prob += lib.lpSum(pi[a] for a in range(numactions)) == 1
             prob.solve(lib.GLPK_CMD(msg=0))
-            ret = np.array([lib.value(pi[a]) for a in range(self.numactions)])
+            ret = np.array([lib.value(pi[a]) for a in range(numactions)])
 
         if not (ret >= 0.0).all():
             raise Exception('{} - negative probability error: {}'.format(solver, ret))

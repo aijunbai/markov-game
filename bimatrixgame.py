@@ -23,6 +23,12 @@ class BiMatrixGame(game.Game):
     def numactions(self, a):
         return self.bimatrix.numactions()[a]
 
+    def symmetric_state(self, state):
+        return state
+
+    def symmetric_action(self, action):
+        return action
+
     def set_matrix(self, R=None):
         self.bimatrix = matrix.BiMatrix(R=R)
         for p in range(2):

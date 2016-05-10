@@ -19,6 +19,7 @@ class Game(object):
     def __init__(self, name, gamma, H):
         self.name = name
         self.gamma = gamma
+        self.is_symmetric = False  # the game is symmetric for either side
         self.H = H
         self.t = 0
         self.players = {}
@@ -27,7 +28,6 @@ class Game(object):
         self.animation = False
 
     def add_player(self, i, player):
-        assert player.no == 0 or player.no == 1
         self.players[i] = player
 
     def configuration(self):
@@ -38,6 +38,14 @@ class Game(object):
 
     def set_animation(self, animation):
         self.animation = animation
+
+    @abstractmethod
+    def symmetric_state(self, state):
+        pass
+
+    @abstractmethod
+    def symmetric_action(self, action):
+        pass
 
     @abstractmethod
     def numactions(self, no):
@@ -57,22 +65,28 @@ class Game(object):
                 print('step: {}'.format(t))
 
             actions = np.array(
-                [self.players[0].act(self.state, modes[0], self.verbose),
-                 self.players[1].act(self.state, modes[1], self.verbose)],
+                [self.players[0].act(self.state, modes[0], 0, self),
+                 self.players[1].act(self.state, modes[1], 1, self)],
                 dtype=np.int8)
             state_prime, rewards = self.simulate(actions)
 
             for j, player in self.players.items():
                 if modes[j]:
                     player.update(
-                        self.state, actions[j], actions[1 - j], rewards[j], state_prime, t)
+                        self.state,
+                        actions[j],
+                        actions[1 - j],
+                        rewards[j],
+                        state_prime,
+                        j,
+                        self)
 
             self.state = state_prime
             if self.animation:
                 time.sleep(0.25)
 
-        for player in self.players.values():
-            player.done(self.verbose)
+        for j, player in self.players.items():
+            player.done(j, self)
 
     @abstractmethod
     def simulate(self, actions):  # state, actions -> state, reward

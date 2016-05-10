@@ -14,8 +14,10 @@ Options:
   --version                show version and exit
   -l, --left               train the left agent
   -r, --right              train the right agent
+  -L, --save_left L        save the left agent as data/L.pickle [default: ]
+  -R, --save_right R       save the right agent as data/R.pickle [default: ]
   -t, --trainall           train both left and right agents
-  -H, --horizon H          run the simulation for N steps [default: 1M]
+  -H, --horizon H          run the simulation for N steps [default: 10k]
   -R, --runs R             run the experiment R times [default: 1]
   -a, --animation          run the experiment in animation mode
   -s, --seed SEED          use SEED as the random seed [default: 0]
@@ -77,9 +79,9 @@ def create_agent(name, *args, **kwargs):
         return None
 
 
-def save_agent(g, a):
-    print('saving agent to {}'.format(a.pickle_name(g.name, g.H)))
-    with open(a.pickle_name(g.name, g.H), 'wb') as f:
+def save_agent(a, pickle_name):
+    print('saving agent to {}'.format(pickle_name))
+    with open(pickle_name, 'wb') as f:
         pickle.dump(a, f, protocol=2)
 
 
@@ -97,6 +99,7 @@ if __name__ == '__main__':
     modes = {0: arguments['--left'], 1: arguments['--right']}
     trainall = arguments['--trainall']
     agents = {0: arguments['<left>'], 1: arguments['<right>']}
+    pickles = {0: arguments['--save_left'], 1: arguments['--save_right']}
     game = arguments['<game>']
     animation = arguments['--animation']
     seed = int(arguments['--seed'])
@@ -108,15 +111,19 @@ if __name__ == '__main__':
         modes[0] = modes[1] = True
 
     for i in range(R):
-        g = create_game(game, H)
+        G = create_game(game, H)
 
         for j in range(2):
-            g.add_player(j, create_agent(agents[j], j, g))
+            G.add_player(j, create_agent(agents[j], j, G))
 
-        g.set_verbose(verbose)
-        g.set_animation(animation)
-        g.run(modes)
+        G.set_verbose(verbose)
+        G.set_animation(animation)
+        G.run(modes)
 
         for j in range(2):
             if modes[j]:
-                save_agent(g, g.players[j])
+                if len(pickles[j]):
+                    pickles[j] = 'data/' + pickles[j] + '.pickle'
+                else:
+                    pickles[j] = G.players[j].pickle_name(j, G)
+                save_agent(G.players[j], pickles[j])

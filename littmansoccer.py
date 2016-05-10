@@ -15,15 +15,13 @@ __author__ = 'Aijun Bai'
 
 
 class State(object):
-    def __init__(self):
-        self.ball = 0  # the player holding the ball
-        self.positions = np.zeros((2, 2), dtype=np.int8)
+    def __init__(self, ball=None, positions=None):
+        self.ball = ball if ball is not None else 0
+        self.positions = positions if positions is not None \
+            else np.zeros((2, 2), dtype=np.int8)
 
     def clone(self):
-        cloned = State()
-        cloned.ball = self.ball
-        cloned.positions = np.copy(self.positions)
-        return cloned
+        return State(ball=self.ball, positions=np.copy(self.positions))
 
     @staticmethod
     def bound(coordinates, min_value, max_value):
@@ -44,8 +42,7 @@ class State(object):
         return hash((self.ball, self.positions.tostring()))
 
     def __eq__(self, other):
-        return isinstance(other, self.__class__) \
-               and self.ball == other.ball \
+        return self.ball == other.ball \
                and np.array_equal(self.positions, other.positions)
 
     def __ne__(self, other):
@@ -75,6 +72,23 @@ class Action(IntEnum):
         else:
             raise Exception('unrecognized action: {}'.format(a))
 
+    @classmethod
+    def symmetric(cls, a):
+        return a if a == cls.stand else cls.opposite(a)
+
+    @classmethod
+    def opposite(cls, a):
+        if a == cls.north:
+            return cls.south
+        elif a == cls.east:
+            return cls.west
+        elif a == cls.south:
+            return cls.north
+        elif a == cls.west:
+            return cls.east
+        else:
+            raise Exception('unrecognized action: {}'.format(a))
+
 
 class Simulator(markovgame.Simulator):
     def __init__(self, game):
@@ -94,6 +108,28 @@ class Simulator(markovgame.Simulator):
     def numactions(self, no):
         return len(Action.__members__)
 
+    def symmetric_state(self, state):
+        positions = self.bounds[:, 1] - state.positions
+        positions[[0, 1]] = positions[[1, 0]]
+        return State(ball=1 - state.ball, positions=positions)
+
+    @staticmethod
+    def symmetric_action(action):
+        return Action.symmetric(action)
+
+    def observation(self, state, no):
+        """
+        generate observation for player no according to state:
+        the agent is alwasy considering itself as no=0
+        """
+        if no == 0:
+            return state
+        else:
+            # translate from no=1 to no=0
+            positions = self.bounds[:, 1] - state.positions
+            positions[[0, 1]] = positions[[1, 0]]
+            return State(ball=1 - state.ball, positions=positions)
+
     def goal(self, i):
         self.episodes += 1
         self.wins[i] += 1
@@ -107,8 +143,7 @@ class Simulator(markovgame.Simulator):
                 i, self.wins[i], self.wins[i] / self.episodes * 100))
 
     def initial_state(self):
-        state = State()
-        state.ball = random.randint(0, 1)
+        state = State(ball=random.randint(0, 1))
         state.positions[0] = np.floor(self.center + np.ones(2))
         state.positions[1] = np.ceil(self.center - np.ones(2))
         self.assertion(state)
@@ -133,6 +168,12 @@ class Simulator(markovgame.Simulator):
             position[d] = utils.minmax(self.bounds[d, 0], position[d], self.bounds[d, 1])
 
     def step(self, state, actions):
+        """
+        run the simulator for one timestep
+        :param state: state in global frame
+        :param actions: joint actions returned by agents in local frame
+        :return:
+        """
         self.assertion(state)
 
         rewards = np.zeros(2)
@@ -145,27 +186,28 @@ class Simulator(markovgame.Simulator):
             print('actions: {}'.format([Action(a).name for a in actions]))
             print('order: {}'.format(order))
 
-        for i in order:
-            action = actions[i]
+        for j in order:
+            action = actions[j]
+
             if random.random() < self.random_threshold:
                 action = random.choice(list(Action))
             if self.game.verbose:
-                print('actual action of {}: {}'.format(i, [Action(action).name]))
-            position = state_prime.positions[i] + Action.direction(action)
+                print('actual action of {}: {}'.format(j, [Action(action).name]))
+            position = state_prime.positions[j] + Action.direction(action)
 
-            if state_prime.ball == i and self.is_goal(position, i):  # goal
-                rewards[i] = 1
-                rewards[1 - i] = -1
+            if state_prime.ball == j and self.is_goal(position, j):  # goal
+                rewards[j] = 1
+                rewards[1 - j] = -1
                 state_prime = self.initial_state()  # new episode
-                goal_player = i
+                goal_player = j
                 break
             else:
                 self.bound(position)
 
-                if np.array_equal(position, state_prime.positions[1 - i]):  # the move does not take place
+                if np.array_equal(position, state_prime.positions[1 - j]):  # the move does not take place
                     state_prime.ball = random.randint(0, 1)  # swithch ball possession
                 else:
-                    state_prime.positions[i] = position
+                    state_prime.positions[j] = position
 
         if self.game.verbose:
             print('rewards: {}'.format(rewards))
@@ -197,39 +239,38 @@ class Simulator(markovgame.Simulator):
 class LittmanSoccer(markovgame.MarkovGame):
     def __init__(self, H):
         super().__init__('littmansoccer', Simulator(self), 0.9, H)
+        self.is_symmetric = True
 
     def numactions(self, no):
         return self.simulator.numactions(no)
 
+    def symmetric_state(self, state):
+        return self.simulator.symmetric_state(state)
+
+    def symmetric_action(self, action):
+        return self.simulator.symmetric_action(action)
+
 
 class HandCodedAgent(Agent):
     def __init__(self, no, game):
-        super().__init__(no, game, 'handcoded')
-        self.mid = game.simulator.center[1]
+        super().__init__('littmansoccerhandcoded', no, game)
 
-    def done(self, verbose):
-        super().done(verbose)
-
-    def act(self, s, exploration, verbose):
-        if s.ball == self.no:  # dribble
-            if s.positions[self.no][1] < self.mid - 1.0:
+    def act(self, s, exploration, no, game):
+        if s.ball == no:  # dribble
+            mid = game.simulator.center[1]
+            if s.positions[no][1] < mid - 1.0:
                 return Action.north
-            elif s.positions[self.no][1] <= self.mid + 1.0:
-                return Action.west if self.no == 0 else Action.east
+            elif s.positions[no][1] <= mid + 1.0:
+                return Action.west if no == 0 else Action.east
             else:
                 return Action.south
         else:  # chase
-            return HandCodedAgent.moveto(s.positions[self.no], s.positions[1 - self.no])
-
-    def update(self, s, a, o, r, sp, t):
-        pass
+            return HandCodedAgent.moveto(s.positions[no], s.positions[1 - no])
 
     @staticmethod
     def moveto(position, target):
         actions = []
-
         delta = target - position
-
         if delta[0] > 0:
             actions.append(Action.east)
         elif delta[0] < 0:
@@ -239,5 +280,4 @@ class HandCodedAgent(Agent):
             actions.append(Action.north)
         elif delta[1] < 0:
             actions.append(Action.south)
-
         return random.choice(actions)
