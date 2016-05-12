@@ -43,6 +43,9 @@ class MarkovGame(game.Game):
     def simulate(self, actions):
         return self.simulator.step(self.state, actions)
 
+    def report(self):
+        return self.simulator.report()
+
     @abstractmethod
     def numactions(self, no):
         pass

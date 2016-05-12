@@ -19,28 +19,29 @@
 
 set -o nounset                              # Treat unset variables as an error
 
-H="1m"
+TRAIN="1m"
+TEST="10k"
 
 ./clear.sh
 
-./run.sh -H $H littmansoccer minimaxq random -l -L MR &
-./run.sh -H $H littmansoccer minimaxq minimaxq -l -r -L MM &
-./run.sh -H $H littmansoccer q random -l -L QR &
-./run.sh -H $H littmansoccer q q -l -r -L QQ &
+./run.sh -H $TRAIN littmansoccer minimaxq random -l -L MR &
+./run.sh -H $TRAIN littmansoccer minimaxq littmansoccerhandcoded -l -L MH &
+./run.sh -H $TRAIN littmansoccer minimaxq minimaxq -l -r -L MM &
+./run.sh -H $TRAIN littmansoccer q random -l -L QR &
+./run.sh -H $TRAIN littmansoccer q littmansoccerhandcoded -l -L QH &
+./run.sh -H $TRAIN littmansoccer q q -l -r -L QQ &
 
 wait
 
-./run.sh -H $H littmansoccer data/MR.pickle q -r -R MR-challenger &
-./run.sh -H $H littmansoccer data/MM.pickle q -r -R MM-challenger &
-./run.sh -H $H littmansoccer data/QR.pickle q -r -R QR-challenger &
-./run.sh -H $H littmansoccer data/QQ.pickle q -r -R QQ-challenger &
+for i in MR MH MM QR QH QQ; do
+    ./run.sh -H $TRAIN littmansoccer "data/${i}.pickle" q -r -R "${i}-challenger" &
+done
 
 wait
-
 
 rm -f data/littmansoccer_*.pickle
 
-parallel --results result --header : "./run.sh -H 10k littmansoccer {left} {right}" \
-    ::: left data/MR.pickle data/MM.pickle data/QR.pickle data/QQ.pickle \
+parallel --gnu --results result/ --header : "./run.sh -H $TEST littmansoccer {left} {right}" \
+    ::: left data/M?.pickle data/Q?.pickle \
     ::: right random littmansoccerhandcoded data/*.pickle
 

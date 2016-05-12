@@ -40,6 +40,10 @@ class Game(object):
         self.animation = animation
 
     @abstractmethod
+    def report(self):
+        pass
+
+    @abstractmethod
     def symmetric_state(self, state):
         pass
 
@@ -85,6 +89,7 @@ class Game(object):
             if self.animation:
                 time.sleep(0.25)
 
+        self.report()
         for j, player in self.players.items():
             player.done(j, self)
 

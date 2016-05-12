@@ -66,3 +66,4 @@ gurobi.log
 *.pyc
 *.pickle
 *.prof
+nohup.out

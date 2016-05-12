@@ -38,6 +38,9 @@ class BiMatrixGame(game.Game):
         return self.state, np.array(
             [self.bimatrix.get_reward_for(i, actions) for i in range(2)])
 
+    def report(self):
+        pass
+
 
 class PenaltyShoot(BiMatrixGame):
     def __init__(self, H):
