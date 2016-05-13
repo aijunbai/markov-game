@@ -15,7 +15,6 @@ import numpy as np
 import importlib
 import humanfriendly
 import utils
-import strategy
 
 __author__ = 'Aijun Bai'
 
@@ -23,18 +22,18 @@ __author__ = 'Aijun Bai'
 class Agent(object):
     __metaclass__ = ABCMeta
 
-    def __init__(self, name, no, game):
+    def __init__(self, name, id_, game):
         self.name = name
-        print('{}: creating agent {}_{}...'.format(game, self.name, no))
+        print('{}: creating agent {}_{}...'.format(game, self.name, id_))
 
-    def done(self, no, game):
-        print('{}: finishing agent {}_{}...'.format(game, self.name, no))
+    def done(self, id_, game):
+        print('{}: finishing agent {}_{}...'.format(game, self.name, id_))
 
     @abstractmethod
-    def act(self, s, exploration, no, game):
+    def act(self, s, exploration, id_, game):
         pass
 
-    def update(self, s, a, o, r, sp, no, game):
+    def update(self, s, a, o, r, sp, id_, game):
         pass
 
     @staticmethod
@@ -42,137 +41,141 @@ class Agent(object):
         s = humanfriendly.format_size(n)
         return s.replace(' ', '').replace('bytes', '').replace('byte', '').rstrip('B')
 
-    def pickle_name(self, no, game):
+    def pickle_name(self, id_, game):
         return 'data/{}_{}_{}_{}.pickle'.format(
-            game.name, self.name, no, Agent.format(game.H))
+            game.name, self.name, id_, Agent.format(game.max_steps))
 
 
 class StationaryAgent(Agent):
-    def __init__(self, no, game, pi=None):
-        super().__init__('stationary', no, game)
-        self.strategy = strategy.Strategy(game.numactions(no), pi=pi)
+    def __init__(self, id_, game, pi=None):
+        super().__init__('stationary', id_, game)
+        self.pi = np.array(pi)
 
-    def act(self, s, exploration, no, game):
-        return self.strategy.sample()
+    def act(self, s, exploration, id_, game):
+        return StationaryAgent.sample(self.pi)
+
+    @staticmethod
+    def sample(pi):
+        pi /= np.sum(pi)
+        return np.random.choice(pi.size, size=1, p=pi)[0]
 
 
 class RandomAgent(StationaryAgent):
-    def __init__(self, no, game):
-        n = game.numactions(no)
-        super().__init__(no, game, pi=[1.0 / n] * n)
+    def __init__(self, id_, game):
+        n = game.numactions(id_)
+        super().__init__(id_, game, pi=[1.0 / n] * n)
         self.name = 'random'
 
 
 class BaseQAgent(Agent):
-    def __init__(self, name, no, game, episilon=0.2, N=10000):
-        super().__init__(name, no, game)
+    def __init__(self, name, id_, game, episilon=0.2, N=10000):
+        super().__init__(name, id_, game)
         self.episilon = episilon
         self.N = N
         self.Q = None
-        self.strategy = {0: defaultdict(partial(strategy.Strategy, game.numactions(0))),
-                         1: defaultdict(partial(strategy.Strategy, game.numactions(1)))}
+        self.pi = {0: defaultdict(partial(np.random.dirichlet, [1.0] * game.numactions(0))),
+                   1: defaultdict(partial(np.random.dirichlet, [1.0] * game.numactions(1)))}
 
     def alpha(self, t):
         return self.N / (self.N + t)
 
-    def done(self, no, game):
-        super().done(no, game)
+    def done(self, id_, game):
+        super().done(id_, game)
 
         if game.verbose:
             utils.pv('self.name')
             utils.pv('self.Q')
-            utils.pv('self.strategy')
+            utils.pv('self.pi')
 
-    def act(self, s, exploration, no, game):
+    def act(self, s, exploration, id_, game):
         if exploration and random.random() < self.episilon:
-            return random.randint(0, game.numactions(no) - 1)
+            return random.randint(0, game.numactions(id_) - 1)
         else:
             if game.verbose:
-                print('strategy of {}: {}'.format(no, self.strategy[no][s]))
-            return self.strategy[no][s].sample()
+                print('policy of {}: {}'.format(id_, self.pi[id_][s]))
+            return StationaryAgent.sample(self.pi[id_][s])
 
     @abstractmethod
-    def update(self, s, a, o, r, sp, no, game):
+    def update(self, s, a, o, r, sp, id_, game):
         pass
 
     @abstractmethod
-    def update_strategy(self, s, no, game):
+    def update_policy(self, s, id_, game):
         pass
 
     @abstractmethod
-    def do_symmetry(self, s, no, game):
+    def do_symmetry(self, s, id_, game):
         pass
 
 class QAgent(BaseQAgent):
-    def __init__(self, no, game):
-        super().__init__('q', no, game)
+    def __init__(self, id_, game):
+        super().__init__('q', id_, game)
         self.Q = {0: defaultdict(partial(np.random.rand, game.numactions(0))),
                   1: defaultdict(partial(np.random.rand, game.numactions(1)))}
 
-    def update(self, s, a, o, r, sp, no, game):
-        Q = self.Q[no][s]
-        v = np.max(self.Q[no][sp])
+    def update(self, s, a, o, r, sp, id_, game):
+        Q = self.Q[id_][s]
+        v = np.max(self.Q[id_][sp])
         Q[a] += self.alpha(game.t) * (r + game.gamma * v - Q[a])
-        self.update_strategy(s, no, game)
+        self.update_policy(s, id_, game)
 
         if game.is_symmetric:
-            self.do_symmetry(s, no, game)
+            self.do_symmetry(s, id_, game)
 
-    def update_strategy(self, s, no, game):
-        Q = self.Q[no][s]
-        self.strategy[no][s].update((Q == max(Q)).astype(np.double))
+    def update_policy(self, s, id_, game):
+        Q = self.Q[id_][s]
+        self.pi[id_][s] = (Q == max(Q)).astype(np.double)
 
-    def do_symmetry(self, s, no, game):
+    def do_symmetry(self, s, id_, game):
         s2 = game.symmetric_state(s)
-        for a in range(game.numactions(no)):
-            self.strategy[1 - no][s2].pi[game.symmetric_action(a)] = self.strategy[no][s].pi[a]
-            self.Q[1 - no][s2][game.symmetric_action(a)] = self.Q[no][s][a]
+        for a in range(game.numactions(id_)):
+            self.pi[1 - id_][s2][game.symmetric_action(a)] = self.pi[id_][s][a]
+            self.Q[1 - id_][s2][game.symmetric_action(a)] = self.Q[id_][s][a]
 
 
 class MinimaxQAgent(BaseQAgent):
-    def __init__(self, no, game):
-        super().__init__('minimax', no, game)
+    def __init__(self, id_, game):
+        super().__init__('minimax', id_, game)
         self.solvers = []
         self.Q = {0: defaultdict(partial(np.random.rand, game.numactions(0), game.numactions(1))),
                   1: defaultdict(partial(np.random.rand, game.numactions(1), game.numactions(0)))}
 
-    def done(self, no, game):
-        super().done(no, game)
+    def done(self, id_, game):
+        super().done(id_, game)
         self.solvers = []  # preparing for pickling
 
-    def val(self, s, no, game):
-        Q = self.Q[no][s]
-        pi = self.strategy[no][s].pi
-        return min(np.dot(pi, Q[:, o]) for o in range(game.numactions(1 - no)))
+    def val(self, s, id_, game):
+        Q = self.Q[id_][s]
+        pi = self.pi[id_][s]
+        return min(np.dot(pi, Q[:, o]) for o in range(game.numactions(1 - id_)))
 
-    def update(self, s, a, o, r, sp, no, game):
-        Q = self.Q[no][s]
-        v = self.val(sp, no, game)
+    def update(self, s, a, o, r, sp, id_, game):
+        Q = self.Q[id_][s]
+        v = self.val(sp, id_, game)
         Q[a, o] += self.alpha(game.t) * (r + game.gamma * v - Q[a, o])
-        self.update_strategy(s, no, game)
+        self.update_policy(s, id_, game)
 
         if game.is_symmetric:
-            self.do_symmetry(s, no, game)
+            self.do_symmetry(s, id_, game)
 
-    def update_strategy(self, s, no, game):
+    def update_policy(self, s, id_, game):
         self.initialize_solvers()
         for solver, lib in self.solvers:
             try:
-                self.strategy[no][s].update(
-                    MinimaxQAgent.lp_solve(self.Q[no][s], solver, lib, no, game))
+                self.pi[id_][s] = MinimaxQAgent.lp_solve(self.Q[id_][s], solver, lib, id_, game)
             except Exception as e:
                 print('optimization using {} failed: {}'.format(solver, e))
                 continue
             else:
                 break
 
-    def do_symmetry(self, s, no, game):
+    def do_symmetry(self, s, id_, game):
         s2 = game.symmetric_state(s)
-        for a in range(game.numactions(no)):
-            self.strategy[1 - no][s2].pi[game.symmetric_action(a)] = self.strategy[no][s].pi[a]
-            for o in range(game.numactions(1 - no)):
-                self.Q[1 - no][s2][game.symmetric_action(a), game.symmetric_action(o)] \
-                    = self.Q[no][s][a, o]
+        for a in range(game.numactions(id_)):
+            self.pi[1 - id_][s2][game.symmetric_action(a)] = self.pi[id_][s][a]
+            for o in range(game.numactions(1 - id_)):
+                self.Q[1 - id_][s2][game.symmetric_action(a), game.symmetric_action(o)] \
+                    = self.Q[id_][s][a, o]
 
     def initialize_solvers(self):
         if not self.solvers:
@@ -183,10 +186,10 @@ class MinimaxQAgent(BaseQAgent):
                     pass
 
     @staticmethod
-    def lp_solve(Q, solver, lib, no, game):
+    def lp_solve(Q, solver, lib, id_, game):
         ret = None
-        numactions =  game.numactions(no)
-        opp_numactions = game.numactions(1 - no)
+        numactions =  game.numactions(id_)
+        opp_numactions = game.numactions(1 - id_)
 
         if solver == 'scipy.optimize':
             c = np.append(np.zeros(numactions), -1.0)
@@ -234,8 +237,8 @@ class MinimaxQAgent(BaseQAgent):
 
 
 # class KappaAgent(Agent):
-#     def __init__(self, no, game, N=25, episilon=0.1, alpha=0.01):
-#         super().__init__(no, game, 'kapper')
+#     def __init__(self, id_, game, N=25, episilon=0.1, alpha=0.01):
+#         super().__init__(id_, game, 'kapper')
 #
 #         self.episilon = episilon
 #         self.alpha = alpha
@@ -269,7 +272,7 @@ class MinimaxQAgent(BaseQAgent):
 #
 #     def report(self):
 #         super().report()
-#         eq = RandomAgent(self.no, self.game).strategy.pi
+#         eq = RandomAgent(self.id_, self.game).strategy.pi
 #         policies = ({'dist': np.linalg.norm(p.strategy.pi - eq), 'pi': p.strategy, 'val': p.val()} for i, p in
 #                     enumerate(self.particles))
 #         policies = sorted(policies, key=lambda x: x['dist'])

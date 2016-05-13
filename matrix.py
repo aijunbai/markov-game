@@ -5,6 +5,7 @@ from __future__ import (absolute_import, division,
 from builtins import *
 
 import numpy as np
+
 __author__ = 'Aijun Bai'
 
 class BiMatrix(object):

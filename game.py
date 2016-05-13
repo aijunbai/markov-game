@@ -16,11 +16,11 @@ __author__ = 'Aijun Bai'
 class Game(object):
     __metaclass__ = ABCMeta
 
-    def __init__(self, name, gamma, H):
+    def __init__(self, name, gamma, max_steps):
         self.name = name
         self.gamma = gamma
         self.is_symmetric = False  # the game is symmetric for either side
-        self.H = H
+        self.max_steps = max_steps
         self.t = 0
         self.players = {}
         self.state = None
@@ -52,7 +52,7 @@ class Game(object):
         pass
 
     @abstractmethod
-    def numactions(self, no):
+    def numactions(self, id_):
         pass
 
     @timeit
@@ -62,7 +62,7 @@ class Game(object):
 
         print('configuration: {}'.format(self.configuration()))
 
-        for t in range(self.H):
+        for t in range(self.max_steps):
             self.t = t
 
             if self.verbose:

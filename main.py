@@ -17,7 +17,7 @@ Options:
   -L, --save_left L        save the left agent as data/L.pickle [default: ]
   -R, --save_right R       save the right agent as data/R.pickle [default: ]
   -t, --trainall           train both left and right agents
-  -H, --horizon H          run the simulation for N steps [default: 10k]
+  -m, --max_steps M        run the simulation for M steps [default: 10k]
   -a, --animation          run the experiment in animation mode
   -s, --seed SEED          use SEED as the random seed [default: 0]
   -v, --verbose            operate in verbose mode
@@ -93,7 +93,7 @@ def load_agent(file_name):
 if __name__ == '__main__':
     arguments = docopt(__doc__, version='0.1.1rc')
 
-    H = humanfriendly.parse_size(arguments['--horizon'])
+    max_steps = humanfriendly.parse_size(arguments['--max_steps'])
     modes = {0: arguments['--left'], 1: arguments['--right']}
     trainall = arguments['--trainall']
     agents = {0: arguments['<left>'], 1: arguments['<right>']}
@@ -108,7 +108,7 @@ if __name__ == '__main__':
     if trainall:
         modes[0] = modes[1] = True
 
-    G = create_game(game, H)
+    G = create_game(game, max_steps)
 
     for j in range(2):
         G.add_player(j, create_agent(agents[j], j, G))

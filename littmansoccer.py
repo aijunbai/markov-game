@@ -105,7 +105,7 @@ class Simulator(markovgame.Simulator):
         self.episodes = 2
         self.wins = np.ones(2, dtype=np.int)
 
-    def numactions(self, no):
+    def numactions(self, id_):
         return len(Action.__members__)
 
     def symmetric_state(self, state):
@@ -212,12 +212,12 @@ class Simulator(markovgame.Simulator):
 
 
 class LittmanSoccer(markovgame.MarkovGame):
-    def __init__(self, H):
-        super().__init__('littmansoccer', Simulator(self), 0.9, H)
+    def __init__(self, max_steps):
+        super().__init__('littmansoccer', Simulator(self), 0.9, max_steps)
         self.is_symmetric = True
 
-    def numactions(self, no):
-        return self.simulator.numactions(no)
+    def numactions(self, id_):
+        return self.simulator.numactions(id_)
 
     def symmetric_state(self, state):
         return self.simulator.symmetric_state(state)
@@ -227,20 +227,20 @@ class LittmanSoccer(markovgame.MarkovGame):
 
 
 class HandCodedAgent(Agent):
-    def __init__(self, no, game):
-        super().__init__('littmansoccerhandcoded', no, game)
+    def __init__(self, id_, game):
+        super().__init__('littmansoccerhandcoded', id_, game)
 
-    def act(self, s, exploration, no, game):
-        if s.ball == no:  # dribble
+    def act(self, s, exploration, id_, game):
+        if s.ball == id_:  # dribble
             mid = game.simulator.center[1]
-            if s.positions[no][1] < mid - 1.0:
+            if s.positions[id_][1] < mid - 1.0:
                 return Action.north
-            elif s.positions[no][1] <= mid + 1.0:
-                return Action.west if no == 0 else Action.east
+            elif s.positions[id_][1] <= mid + 1.0:
+                return Action.west if id_ == 0 else Action.east
             else:
                 return Action.south
         else:  # chase
-            return HandCodedAgent.moveto(s.positions[no], s.positions[1 - no])
+            return HandCodedAgent.moveto(s.positions[id_], s.positions[1 - id_])
 
     @staticmethod
     def moveto(position, target):

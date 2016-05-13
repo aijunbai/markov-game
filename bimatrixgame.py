@@ -15,8 +15,8 @@ __author__ = 'Aijun Bai'
 
 
 class BiMatrixGame(game.Game):
-    def __init__(self, name, gamma, H):
-        super().__init__(name, gamma, H)
+    def __init__(self, name, gamma, max_steps):
+        super().__init__(name, gamma, max_steps)
         self.bimatrix = None
         self.state = 0
 
@@ -43,22 +43,22 @@ class BiMatrixGame(game.Game):
 
 
 class PenaltyShoot(BiMatrixGame):
-    def __init__(self, H):
-        super().__init__('penaltyshoot', 0.95, H)
+    def __init__(self, max_steps):
+        super().__init__('penaltyshoot', 0.95, max_steps)
         self.set_matrix(
             R=[[-1, 1], [1, -1]])
 
 
 class RockPaperScissors(BiMatrixGame):
-    def __init__(self, H):
-        super().__init__('rockpaperscissors', 0.95, H)
+    def __init__(self, max_steps):
+        super().__init__('rockpaperscissors', 0.95, max_steps)
         self.set_matrix(
             R=[[0, -1, 1], [1, 0, -1], [-1, 1, 0]])
 
 
 class RockPaperScissorsSpockLizard(BiMatrixGame):
-    def __init__(self, H):
-        super().__init__('rockpaperscissorsspocklizard', 0.95, H)
+    def __init__(self, max_steps):
+        super().__init__('rockpaperscissorsspocklizard', 0.95, max_steps)
         self.set_matrix(
             R=[[0, -1, 1, -1, 1],
                [1, 0, -1, 1, -1],
@@ -68,22 +68,22 @@ class RockPaperScissorsSpockLizard(BiMatrixGame):
 
 
 class MatchingPennies(BiMatrixGame):
-    def __init__(self, H):
-        super().__init__('matchingpennies', 0.95, H)
+    def __init__(self, max_steps):
+        super().__init__('matchingpennies', 0.95, max_steps)
         self.set_matrix(
             R=[[1, -1], [-1, 1]])
 
 
 class Inspection(BiMatrixGame):
-    def __init__(self, H):
-        super().__init__('inspection', 0.95, H)
+    def __init__(self, max_steps):
+        super().__init__('inspection', 0.95, max_steps)
         self.set_matrix(
             R=[[-1, 1], [1, -1]])
 
 
 class RandomGame(BiMatrixGame):
-    def __init__(self, rows, cols, H):
-        super().__init__('random{}x{}'.format(rows, cols), 0.95, H)
+    def __init__(self, rows, cols, max_steps):
+        super().__init__('random{}x{}'.format(rows, cols), 0.95, max_steps)
         R = RandomGame.random_reward(rows, cols)
         self.set_matrix(R=R)
 

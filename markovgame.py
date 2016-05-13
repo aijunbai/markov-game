@@ -20,7 +20,7 @@ class Simulator(object):
         self.game = g
 
     @abstractmethod
-    def numactions(self, no):
+    def numactions(self, id_):
         pass
 
     @abstractmethod
@@ -35,8 +35,8 @@ class Simulator(object):
 class MarkovGame(game.Game):
     __metaclass__ = ABCMeta
 
-    def __init__(self, name, simulator, gamma, H):
-        super().__init__(name, gamma, H)
+    def __init__(self, name, simulator, gamma, max_steps):
+        super().__init__(name, gamma, max_steps)
         self.simulator = simulator
         self.state = self.simulator.initial_state()
 
@@ -47,5 +47,5 @@ class MarkovGame(game.Game):
         return self.simulator.report()
 
     @abstractmethod
-    def numactions(self, no):
+    def numactions(self, id_):
         pass
