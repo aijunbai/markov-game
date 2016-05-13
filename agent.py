@@ -11,6 +11,9 @@ from collections import defaultdict
 from functools import partial
 
 import numpy as np
+import matplotlib as mpl
+mpl.use('Agg')
+import matplotlib.pyplot as plt
 
 import importlib
 import humanfriendly
@@ -24,10 +27,9 @@ class Agent(object):
 
     def __init__(self, name, id_, game):
         self.name = name
-        print('{}: creating agent {}_{}...'.format(game, self.name, id_))
 
     def done(self, id_, game):
-        print('{}: finishing agent {}_{}...'.format(game, self.name, id_))
+        pass
 
     @abstractmethod
     def act(self, s, exploration, id_, game):
@@ -37,13 +39,12 @@ class Agent(object):
         pass
 
     @staticmethod
-    def format(n):
+    def format_time(n):
         s = humanfriendly.format_size(n)
         return s.replace(' ', '').replace('bytes', '').replace('byte', '').rstrip('B')
 
-    def pickle_name(self, id_, game):
-        return 'data/{}_{}_{}_{}.pickle'.format(
-            game.name, self.name, id_, Agent.format(game.max_steps))
+    def full_name(self, id_, game):
+        return '{}_{}_{}_{}'.format(game.name, self.name, id_, Agent.format_time(game.t))
 
 
 class StationaryAgent(Agent):
@@ -68,7 +69,7 @@ class RandomAgent(StationaryAgent):
 
 
 class BaseQAgent(Agent):
-    def __init__(self, name, id_, game, episilon=0.2, N=10000):
+    def __init__(self, name, id_, game, episilon=0.2, N=10000, num_plots=10):
         super().__init__(name, id_, game)
         self.episilon = episilon
         self.N = N
@@ -76,14 +77,37 @@ class BaseQAgent(Agent):
         self.pi = {0: defaultdict(partial(np.random.dirichlet, [1.0] * game.numactions(0))),
                    1: defaultdict(partial(np.random.dirichlet, [1.0] * game.numactions(1)))}
 
+        self.num_plots = num_plots
+        self.record = defaultdict(list)
+
     def alpha(self, t):
         return self.N / (self.N + t)
+
+    def plot_record(self, s, record, id_, game):
+        fig = plt.figure(figsize=(18,10))
+        n = game.numactions(id_)
+        for a in range(n):
+            plt.subplot(n, 1, a + 1)
+            plt.tight_layout()
+            plt.gca().set_ylim([-0.1, 1.1])
+            plt.title('{}: action {}'.format(self.full_name(id_, game), a))
+            plt.xlabel('step')
+            plt.ylabel('pi[a]')
+            plt.grid()
+            x, y = list(zip(*((t, pi[a]) for t, pi in record)))
+            plt.plot(x, y, 'r-')
+        fig.savefig('policy/' + self.full_name(id_, game) + '.png')
+        plt.close(fig)
 
     def done(self, id_, game):
         super().done(id_, game)
 
+        for s, record in sorted(self.record.items(), key=lambda x: -len(x[1]))[:self.num_plots]:
+            self.plot_record(s, record, id_, game)
+        del self.record  # prepare for pickling
+
         if game.verbose:
-            utils.pv('self.name')
+            utils.pv('self.full_name(id_, game)')
             utils.pv('self.Q')
             utils.pv('self.pi')
 
@@ -101,7 +125,9 @@ class BaseQAgent(Agent):
 
     @abstractmethod
     def update_policy(self, s, id_, game):
-        pass
+        if self.record[s]:
+            self.record[s].append((game.t - 0.01, self.record[s][-1][1]))
+        self.record[s].append((game.t, np.copy(self.pi[id_][s])))
 
     @abstractmethod
     def do_symmetry(self, s, id_, game):
@@ -125,6 +151,7 @@ class QAgent(BaseQAgent):
     def update_policy(self, s, id_, game):
         Q = self.Q[id_][s]
         self.pi[id_][s] = (Q == max(Q)).astype(np.double)
+        super().update_policy(s, id_, game)
 
     def do_symmetry(self, s, id_, game):
         s2 = game.symmetric_state(s)
@@ -142,7 +169,7 @@ class MinimaxQAgent(BaseQAgent):
 
     def done(self, id_, game):
         super().done(id_, game)
-        self.solvers = []  # preparing for pickling
+        del self.solvers  # prepare for pickling
 
     def val(self, s, id_, game):
         Q = self.Q[id_][s]
@@ -168,6 +195,7 @@ class MinimaxQAgent(BaseQAgent):
                 continue
             else:
                 break
+        super().update_policy(s, id_, game)
 
     def do_symmetry(self, s, id_, game):
         s2 = game.symmetric_state(s)

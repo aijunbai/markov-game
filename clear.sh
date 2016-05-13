@@ -18,5 +18,5 @@
 #===============================================================================
 
 set -o nounset                              # Treat unset variables as an error
-rm -fr *.log *.prof nohup.out data/ result/
+rm -fr *.log *.prof nohup.out data/ result/ policy/
 

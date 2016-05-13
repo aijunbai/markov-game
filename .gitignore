@@ -67,3 +67,4 @@ gurobi.log
 *.pickle
 *.prof
 nohup.out
+policy/

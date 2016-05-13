@@ -14,8 +14,8 @@ Options:
   --version                show version and exit
   -l, --left               train the left agent
   -r, --right              train the right agent
-  -L, --save_left L        save the left agent as data/L.pickle [default: ]
-  -R, --save_right R       save the right agent as data/R.pickle [default: ]
+  -L, --left_name L        specify name for the left agent [default: ]
+  -R, --right_name R       specify name for the right agent [default: ]
   -t, --trainall           train both left and right agents
   -m, --max_steps M        run the simulation for M steps [default: 10k]
   -a, --animation          run the experiment in animation mode
@@ -31,50 +31,52 @@ from builtins import *
 import utils
 import bimatrixgame
 import littmansoccer
+import signal
 import agent
 import humanfriendly
+import sys
 import pickle
 from docopt import docopt
 
 __author__ = 'Aijun Bai'
 
 
-def create_game(name, *args, **kwargs):
-    if name == 'penaltyshoot':
+def create_game(game_name, *args, **kwargs):
+    if game_name == 'penaltyshoot':
         return bimatrixgame.PenaltyShoot(*args, **kwargs)
-    elif name == 'rockpaperscissors':
+    elif game_name == 'rockpaperscissors':
         return bimatrixgame.RockPaperScissors(*args, **kwargs)
-    elif name == 'rockpaperscissorsspocklizard':
+    elif game_name == 'rockpaperscissorsspocklizard':
         return bimatrixgame.RockPaperScissorsSpockLizard(*args, **kwargs)
-    elif name == 'matchingpennies':
+    elif game_name == 'matchingpennies':
         return bimatrixgame.MatchingPennies(*args, **kwargs)
-    elif name == 'inspection':
+    elif game_name == 'inspection':
         return bimatrixgame.Inspection(*args, **kwargs)
-    elif name.find('random') != -1:
-        rows, cols = [int(s.strip('random')) for s in name.split('x')]
+    elif game_name.find('random') != -1:
+        rows, cols = [int(s.strip('random')) for s in game_name.split('x')]
         return bimatrixgame.RandomGame(rows, cols, *args, **kwargs)
-    elif name == 'littmansoccer':
+    elif game_name == 'littmansoccer':
         return littmansoccer.LittmanSoccer(*args, **kwargs)
     else:
-        print('no such game: {}'.format(name))
+        print('no such game: {}'.format(game_name))
         return None
 
 
-def create_agent(name, *args, **kwargs):
-    if name == 'stationary':
+def create_agent(agent_type, *args, **kwargs):
+    if agent_type == 'stationary':
         return agent.StationaryAgent(*args, **kwargs)
-    elif name == 'random':
+    elif agent_type == 'random':
         return agent.RandomAgent(*args, **kwargs)
-    elif name == 'q':
+    elif agent_type == 'q':
         return agent.QAgent(*args, **kwargs)
-    elif name == 'minimaxq':
+    elif agent_type == 'minimaxq':
         return agent.MinimaxQAgent(*args, **kwargs)
-    elif name == 'littmansoccerhandcoded':
+    elif agent_type == 'littmansoccerhandcoded':
         return littmansoccer.HandCodedAgent(*args, **kwargs)
-    elif name.find('pickle') != -1:
-        return load_agent(name)
+    elif agent_type.find('pickle') != -1:
+        return load_agent(agent_type)
     else:
-        print('no such agent: {}'.format(name))
+        print('no such agent: {}'.format(agent_type))
         return None
 
 
@@ -97,7 +99,7 @@ if __name__ == '__main__':
     modes = {0: arguments['--left'], 1: arguments['--right']}
     trainall = arguments['--trainall']
     agents = {0: arguments['<left>'], 1: arguments['<right>']}
-    pickles = {0: arguments['--save_left'], 1: arguments['--save_right']}
+    names = {0: arguments['--left_name'], 1: arguments['--right_name']}
     game = arguments['<game>']
     animation = arguments['--animation']
     seed = int(arguments['--seed'])
@@ -110,17 +112,21 @@ if __name__ == '__main__':
 
     G = create_game(game, max_steps)
 
+    def done(*args):
+        G.done()
+        for j in range(2):
+            if modes[j]:
+                save_agent(G.players[j], 'data/' + G.players[j].full_name(j, G) + '.pickle')
+        exit()
+    signal.signal(signal.SIGINT, done)
+
     for j in range(2):
         G.add_player(j, create_agent(agents[j], j, G))
+        if len(names[j]):
+            G.players[j].name = names[j]
 
     G.set_verbose(verbose)
     G.set_animation(animation)
     G.run(modes)
 
-    for j in range(2):
-        if modes[j]:
-            if len(pickles[j]):
-                pickles[j] = 'data/' + pickles[j] + '.pickle'
-            else:
-                pickles[j] = G.players[j].pickle_name(j, G)
-            save_agent(G.players[j], pickles[j])
+    done()

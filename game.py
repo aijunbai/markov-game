@@ -55,6 +55,11 @@ class Game(object):
     def numactions(self, id_):
         pass
 
+    def done(self):
+        self.report()
+        for j, player in self.players.items():
+            player.done(j, self)
+
     @timeit
     def run(self, modes):
         assert len(self.players) == 2
@@ -88,10 +93,6 @@ class Game(object):
             self.state = state_prime
             if self.animation:
                 time.sleep(0.25)
-
-        self.report()
-        for j, player in self.players.items():
-            player.done(j, self)
 
     @abstractmethod
     def simulate(self, actions):  # state, actions -> state, reward
