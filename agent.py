@@ -6,6 +6,7 @@ from builtins import *
 
 import random
 import sys
+import os
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
 from functools import partial
@@ -69,7 +70,7 @@ class RandomAgent(StationaryAgent):
 
 
 class BaseQAgent(Agent):
-    def __init__(self, name, id_, game, episilon=0.2, N=10000, num_plots=10):
+    def __init__(self, name, id_, game, episilon=0.2, N=10000, num_plots=None):
         super().__init__(name, id_, game)
         self.episilon = episilon
         self.N = N
@@ -84,24 +85,29 @@ class BaseQAgent(Agent):
         return self.N / (self.N + t)
 
     def plot_record(self, s, record, id_, game):
+        os.makedirs('policy/', exist_ok=True)
         fig = plt.figure(figsize=(18,10))
         n = game.numactions(id_)
         for a in range(n):
             plt.subplot(n, 1, a + 1)
             plt.tight_layout()
-            plt.gca().set_ylim([-0.1, 1.1])
-            plt.title('{}: action {}'.format(self.full_name(id_, game), a))
+            plt.gca().set_ylim([-0.05, 1.05])
+            plt.gca().set_xlim([0.0, game.t + 1.0])
+            plt.title('player: {}: state: {}, action: {}'.format(self.full_name(id_, game), s, a))
             plt.xlabel('step')
             plt.ylabel('pi[a]')
             plt.grid()
             x, y = list(zip(*((t, pi[a]) for t, pi in record)))
+            x, y = list(x) + [game.t + 1.0], list(y) + [y[-1]]
             plt.plot(x, y, 'r-')
-        fig.savefig('policy/' + self.full_name(id_, game) + '.png')
+        fig.savefig('policy/{}_{}.png'.format(self.full_name(id_, game), s))
         plt.close(fig)
 
     def done(self, id_, game):
         super().done(id_, game)
 
+        if self.num_plots is None:
+            self.num_plots = len(self.record)
         for s, record in sorted(self.record.items(), key=lambda x: -len(x[1]))[:self.num_plots]:
             self.plot_record(s, record, id_, game)
         del self.record  # prepare for pickling

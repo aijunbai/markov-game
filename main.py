@@ -35,6 +35,7 @@ import signal
 import agent
 import humanfriendly
 import sys
+import os
 import pickle
 from docopt import docopt
 
@@ -106,18 +107,24 @@ if __name__ == '__main__':
     verbose = arguments['--verbose']
 
     utils.random_seed(seed)
-
     if trainall:
         modes[0] = modes[1] = True
 
     G = create_game(game, max_steps)
 
     def done(*args):
+        if args and len(args):
+            print('Caught signal {}'.format(args[0]))
+
         G.done()
+        os.makedirs('data/', exist_ok=True)
         for j in range(2):
             if modes[j]:
-                save_agent(G.players[j], 'data/' + G.players[j].full_name(j, G) + '.pickle')
+                save_agent(
+                    G.players[j],
+                    'data/{}.pickle'.format(G.players[j].full_name(j, G)))
         exit()
+
     signal.signal(signal.SIGINT, done)
 
     for j in range(2):
@@ -130,3 +137,4 @@ if __name__ == '__main__':
     G.run(modes)
 
     done()
+

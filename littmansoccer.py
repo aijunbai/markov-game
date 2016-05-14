@@ -28,7 +28,7 @@ class State(object):
         np.clip(coordinates, min_value, max_value, out=coordinates)
 
     def __str__(self):
-        return '{} {} {} {} {}'.format(
+        return '({}, {}, {}, {}, {})'.format(
             self.ball,
             self.positions[0, 0],
             self.positions[0, 1],
