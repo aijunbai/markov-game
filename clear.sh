@@ -18,5 +18,9 @@
 #===============================================================================
 
 set -o nounset                              # Treat unset variables as an error
-rm -fr *.log *.prof nohup.out data/ result/ policy/
+rm -fr *.log *.prof 
+
+for d in data result policy; do
+    mv "${d}" "${d}_`date +%F_%H%M`"
+done
 

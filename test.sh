@@ -21,14 +21,26 @@ set -o nounset                              # Treat unset variables as an error
 
 TRAIN="10m"
 PROBLEM="littmansoccer"
+NUMPLOTS="-1"
 
 if [ $# -ge 1 ]; then
     PROBLEM="$1"
 fi
 
-./run.sh $PROBLEM minimaxq random -t -m $TRAIN -L MR &
-./run.sh $PROBLEM minimaxq q -t -m $TRAIN -L MQ &
-./run.sh $PROBLEM minimaxq minimaxq -t -m $TRAIN -L MM &
-./run.sh $PROBLEM q random -t -m $TRAIN -L QR &
-./run.sh $PROBLEM q q -t -m $TRAIN -L QQ &
+if [ $# -ge 2 ]; then
+    TRAIN="$2"
+fi
+
+./clear.sh
+
+./run.sh -n $NUMPLOTS $PROBLEM minimaxq random -t -m $TRAIN -L MR &
+./run.sh -n $NUMPLOTS $PROBLEM minimaxq q -t -m $TRAIN -L MQ &
+./run.sh -n $NUMPLOTS $PROBLEM minimaxq minimaxq -t -m $TRAIN -L MM &
+./run.sh -n $NUMPLOTS $PROBLEM q random -t -m $TRAIN -L QR &
+./run.sh -n $NUMPLOTS $PROBLEM q q -t -m $TRAIN -L QQ &
+
+if [ $PROBLEM = "littmansoccer" ]; then
+    ./run.sh -n $NUMPLOTS $PROBLEM minimaxq littmansoccerhandcoded -t -m $TRAIN -L MH &
+    ./run.sh -n $NUMPLOTS $PROBLEM q littmansoccerhandcoded -t -m $TRAIN -L QH &
+fi
 

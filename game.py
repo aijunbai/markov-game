@@ -26,18 +26,13 @@ class Game(object):
         self.state = None
         self.verbose = False
         self.animation = False
+        self.numplots = 0
 
     def add_player(self, i, player):
         self.players[i] = player
 
     def configuration(self):
         return '{}({}, {})'.format(self.name, self.players[0].name, self.players[1].name)
-
-    def set_verbose(self, verbose):
-        self.verbose = verbose
-
-    def set_animation(self, animation):
-        self.animation = animation
 
     @abstractmethod
     def report(self):

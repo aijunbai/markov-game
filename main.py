@@ -14,10 +14,11 @@ Options:
   --version                show version and exit
   -l, --left               train the left agent
   -r, --right              train the right agent
-  -L, --left_name L        specify name for the left agent [default: ]
-  -R, --right_name R       specify name for the right agent [default: ]
+  -L, --left_name STR      specify name for the left agent [default: ]
+  -R, --right_name STR     specify name for the right agent [default: ]
   -t, --trainall           train both left and right agents
-  -m, --max_steps M        run the simulation for M steps [default: 10k]
+  -n, --numplots N         plot a number of policies for states [default: 0]
+  -m, --max_steps N        run the simulation for M steps [default: 10k]
   -a, --animation          run the experiment in animation mode
   -s, --seed SEED          use SEED as the random seed [default: 0]
   -v, --verbose            operate in verbose mode
@@ -70,6 +71,10 @@ def create_agent(agent_type, *args, **kwargs):
         return agent.RandomAgent(*args, **kwargs)
     elif agent_type == 'q':
         return agent.QAgent(*args, **kwargs)
+    elif agent_type == 'phc':
+        return agent.PHCAgent(*args, **kwargs)
+    elif agent_type == 'wolf':
+        return agent.WoLFAgent(*args, **kwargs)
     elif agent_type == 'minimaxq':
         return agent.MinimaxQAgent(*args, **kwargs)
     elif agent_type == 'littmansoccerhandcoded':
@@ -103,6 +108,7 @@ if __name__ == '__main__':
     names = {0: arguments['--left_name'], 1: arguments['--right_name']}
     game = arguments['<game>']
     animation = arguments['--animation']
+    numplots = int(arguments['--numplots'])
     seed = int(arguments['--seed'])
     verbose = arguments['--verbose']
 
@@ -132,8 +138,9 @@ if __name__ == '__main__':
         if len(names[j]):
             G.players[j].name = names[j]
 
-    G.set_verbose(verbose)
-    G.set_animation(animation)
+    G.verbose = verbose
+    G.animation = animation
+    G.numplots = numplots
     G.run(modes)
 
     done()

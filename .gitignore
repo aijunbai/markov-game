@@ -68,3 +68,5 @@ gurobi.log
 *.prof
 nohup.out
 policy/
+policy_*/
+
