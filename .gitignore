@@ -69,4 +69,6 @@ gurobi.log
 nohup.out
 policy/
 policy_*/
+train/
+lab*.sh
 

@@ -19,7 +19,8 @@ Options:
   -t, --trainall           train both left and right agents
   -n, --numplots N         plot a number of policies for states [default: 0]
   -m, --max_steps N        run the simulation for M steps [default: 10k]
-  -a, --animation          run the experiment in animation mode
+  -a, --animation          enable animation mode
+  -d, --do_symmetry        do symmetry for Q agent if possible
   -s, --seed SEED          use SEED as the random seed [default: 0]
   -v, --verbose            operate in verbose mode
 """
@@ -54,7 +55,7 @@ def create_game(game_name, *args, **kwargs):
         return bimatrixgame.MatchingPennies(*args, **kwargs)
     elif game_name == 'inspection':
         return bimatrixgame.Inspection(*args, **kwargs)
-    elif game_name.find('random') != -1:
+    elif game_name.startswith('random'):
         rows, cols = [int(s.strip('random')) for s in game_name.split('x')]
         return bimatrixgame.RandomGame(rows, cols, *args, **kwargs)
     elif game_name == 'littmansoccer':
@@ -65,8 +66,12 @@ def create_game(game_name, *args, **kwargs):
 
 
 def create_agent(agent_type, *args, **kwargs):
-    if agent_type == 'stationary':
-        return agent.StationaryAgent(*args, **kwargs)
+    if agent_type.startswith('stationary'):
+        pi = None
+        if agent_type.endswith(']'):
+            pi = agent_type.lstrip('stationary[').rstrip(']').split(',')
+            pi = [float(p) for p in pi]
+        return agent.StationaryAgent(*args, **kwargs, pi=pi)
     elif agent_type == 'random':
         return agent.RandomAgent(*args, **kwargs)
     elif agent_type == 'q':
@@ -79,7 +84,7 @@ def create_agent(agent_type, *args, **kwargs):
         return agent.MinimaxQAgent(*args, **kwargs)
     elif agent_type == 'littmansoccerhandcoded':
         return littmansoccer.HandCodedAgent(*args, **kwargs)
-    elif agent_type.find('pickle') != -1:
+    elif agent_type.endswith('pickle'):
         return load_agent(agent_type)
     else:
         print('no such agent: {}'.format(agent_type))
@@ -108,6 +113,7 @@ if __name__ == '__main__':
     names = {0: arguments['--left_name'], 1: arguments['--right_name']}
     game = arguments['<game>']
     animation = arguments['--animation']
+    do_symmetry = arguments['--do_symmetry']
     numplots = int(arguments['--numplots'])
     seed = int(arguments['--seed'])
     verbose = arguments['--verbose']
@@ -140,6 +146,7 @@ if __name__ == '__main__':
 
     G.verbose = verbose
     G.animation = animation
+    G.do_symmetry = do_symmetry
     G.numplots = numplots
     G.run(modes)
 

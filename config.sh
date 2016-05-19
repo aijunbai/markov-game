@@ -20,5 +20,5 @@
 set -o nounset                              # Treat unset variables as an error
 PYTHON=`which python3.5`
 
-mkdir -p data result policy
+mkdir -p data train test policy
 

@@ -51,14 +51,25 @@ class Agent(object):
 class StationaryAgent(Agent):
     def __init__(self, id_, game, pi=None):
         super().__init__('stationary', id_, game)
-        self.pi = np.array(pi)
+        if pi is None:
+            pi = np.random.dirichlet([1.0] * game.numactions(id_))
+        self.pi = np.array(pi, dtype=np.double)
+        StationaryAgent.normalize(self.pi)
 
     def act(self, s, exploration, id_, game):
+        if game.verbose:
+            print('pi of {}: {}'.format(id_, self.pi))
         return StationaryAgent.sample(self.pi)
 
     @staticmethod
-    def sample(pi):
+    def normalize(pi):
+        minprob = np.min(pi)
+        if minprob < 0.0:
+            pi -= minprob
         pi /= np.sum(pi)
+
+    @staticmethod
+    def sample(pi):
         return np.random.choice(pi.size, size=1, p=pi)[0]
 
 
@@ -70,56 +81,39 @@ class RandomAgent(StationaryAgent):
 
 
 class BaseQAgent(Agent):
-    def __init__(self, name, id_, game, episilon=0.2, N=10000):
+    def __init__(self, name, id_, game, N=10000, episilon=0.2):
         super().__init__(name, id_, game)
         self.episilon = episilon
         self.N = N
         self.Q = None
-        self.pi = {0: defaultdict(partial(np.random.dirichlet, [1.0] * game.numactions(0))),
-                   1: defaultdict(partial(np.random.dirichlet, [1.0] * game.numactions(1)))}
-
+        self.pi = np.array(
+            [defaultdict(partial(np.random.dirichlet, [1.0] * game.numactions(0))),
+             defaultdict(partial(np.random.dirichlet, [1.0] * game.numactions(1)))])
         self.record = defaultdict(list)
 
-    def alpha(self, t):
-        return self.N / (self.N + t)
-
-    def plot_record(self, s, record, id_, game):
-        os.makedirs('policy/', exist_ok=True)
-        fig = plt.figure(figsize=(18,10))
-        n = game.numactions(id_)
-        for a in range(n):
-            plt.subplot(n, 1, a + 1)
-            plt.tight_layout()
-            plt.gca().set_ylim([-0.05, 1.05])
-            plt.gca().set_xlim([0.0, game.t + 1.0])
-            plt.title('player: {}: state: {}, action: {}'.format(self.full_name(id_, game), s, a))
-            plt.xlabel('step')
-            plt.ylabel('pi[a]')
-            plt.grid()
-            x, y = list(zip(*((t, pi[a]) for t, pi in record)))
-            x, y = list(x) + [game.t + 1.0], list(y) + [y[-1]]
-            plt.plot(x, y, 'r-')
-        fig.savefig('policy/{}_{}.png'.format(self.full_name(id_, game), s))
-        plt.close(fig)
-
     def done(self, id_, game):
-        numplots = game.numplots if game.numplots >= 0 else len(self.record)
-        for s, record in sorted(
-                self.record.items(), key=lambda x: -len(x[1]))[:numplots]:
-            self.plot_record(s, record, id_, game)
-        self.record = defaultdict(list)  # prepare for pickling
-
         if game.verbose:
             utils.pv('self.full_name(id_, game)')
             utils.pv('self.Q')
             utils.pv('self.pi')
+
+        numplots = game.numplots if game.numplots >= 0 else len(self.record)
+        for s, record in sorted(
+                self.record.items(), key=lambda x: -len(x[1]))[:numplots]:
+            self.plot_record(s, record, id_, game)
+        self.record.clear()
+
+
+    def alpha(self, t):
+        return self.N / (self.N + t)
 
     def act(self, s, exploration, id_, game):
         if exploration and random.random() < self.episilon:
             return random.randint(0, game.numactions(id_) - 1)
         else:
             if game.verbose:
-                print('policy of {}: {}'.format(id_, self.pi[id_][s]))
+                print('Q of {}: {}'.format(id_, self.Q[id_][s]))
+                print('pi of {}: {}'.format(id_, self.pi[id_][s]))
             return StationaryAgent.sample(self.pi[id_][s])
 
     @abstractmethod
@@ -129,6 +123,25 @@ class BaseQAgent(Agent):
     @abstractmethod
     def update_policy(self, s, a, id_, game):
         pass
+
+    def plot_record(self, s, record, id_, game):
+        os.makedirs('policy/', exist_ok=True)
+        fig = plt.figure(figsize=(18, 10))
+        n = game.numactions(id_)
+        for a in range(n):
+            plt.subplot(n, 1, a + 1)
+            plt.tight_layout()
+            plt.gca().set_ylim([-0.05, 1.05])
+            plt.gca().set_xlim([1.0, game.t + 1.0])
+            plt.title('player: {}: state: {}, action: {}'.format(self.full_name(id_, game), s, a))
+            plt.xlabel('step')
+            plt.ylabel('pi[a]')
+            plt.grid()
+            x, y = list(zip(*((t, pi[a]) for t, pi in record)))
+            x, y = list(x) + [game.t + 1.0], list(y) + [y[-1]]
+            plt.plot(x, y, 'r-')
+        fig.savefig('policy/{}_{}.png'.format(self.full_name(id_, game), s))
+        plt.close(fig)
 
     def record_policy(self, s, id_, game):
         if game.numplots != 0:
@@ -143,17 +156,27 @@ class BaseQAgent(Agent):
 class QAgent(BaseQAgent):
     def __init__(self, id_, game):
         super().__init__('q', id_, game)
-        self.Q = {0: defaultdict(partial(np.random.rand, game.numactions(0))),
-                  1: defaultdict(partial(np.random.rand, game.numactions(1)))}
+        self.R = defaultdict(partial(np.zeros, game.numactions(id_)))  # expected R(s, a)
+        self.count_R = defaultdict(partial(np.zeros, game.numactions(id_)))
+        self.Q = np.array([
+            defaultdict(partial(np.random.rand, game.numactions(0))),
+            defaultdict(partial(np.random.rand, game.numactions(1)))])
+
+    def done(self, id_, game):
+        self.R.clear()
+        self.count_R.clear()
+        super().done(id_, game)
 
     def update(self, s, a, o, r, sp, id_, game):
+        self.count_R[s][a] += 1.0
+        self.R[s][a] += (r - self.R[s][a]) / self.count_R[s][a]
         Q = self.Q[id_][s]
-        v = np.max(self.Q[id_][sp])
-        Q[a] += self.alpha(game.t) * (r + game.gamma * v - Q[a])
+        V = np.max(self.Q[id_][sp])
+        Q[a] += self.alpha(game.t) * (self.R[s][a] + game.gamma * V - Q[a])
         self.update_policy(s, a, id_, game)
         self.record_policy(s, id_, game)
 
-        if game.is_symmetric:
+        if game.is_symmetric and game.do_symmetry:
             self.do_symmetry(s, id_, game)
 
     def update_policy(self, s, a, id_, game):
@@ -161,10 +184,10 @@ class QAgent(BaseQAgent):
         self.pi[id_][s] = (Q == np.max(Q)).astype(np.double)
 
     def do_symmetry(self, s, id_, game):
-        s2 = game.symmetric_state(s)
+        s_ = game.symmetric_state(s)
         for a in range(game.numactions(id_)):
-            self.pi[1 - id_][s2][game.symmetric_action(a)] = self.pi[id_][s][a]
-            self.Q[1 - id_][s2][game.symmetric_action(a)] = self.Q[id_][s][a]
+            self.pi[1 - id_][s_][game.symmetric_action(a)] = self.pi[id_][s][a]
+            self.Q[1 - id_][s_][game.symmetric_action(a)] = self.Q[id_][s][a]
 
 
 class PHCAgent(QAgent):
@@ -174,16 +197,12 @@ class PHCAgent(QAgent):
         self.delta = delta
 
     def update_policy(self, s, a, id_, game):
-       Q = self.Q[id_][s]
-       astar = np.argmax(Q)
-       if a == astar:
-           self.pi[id_][s][a] += self.delta * self.alpha(game.t)
-       else:
-           self.pi[id_][s][a] -= self.delta * self.alpha(game.t) / (game.numactions(id_) - 1)
-       minprob = np.min(self.pi[id_][s])
-       if minprob < 0.0:
-           self.pi[id_][s] -= minprob
-       self.pi[id_][s] /= np.sum(self.pi[id_][s])
+        delta = self.delta * self.alpha(game.t)
+        if a == np.argmax(self.Q[id_][s]):
+            self.pi[id_][s][a] += delta
+        else:
+            self.pi[id_][s][a] -= delta / (game.numactions(id_) - 1)
+        StationaryAgent.normalize(self.pi[id_][s])
 
 
 class WoLFAgent(PHCAgent):
@@ -192,22 +211,21 @@ class WoLFAgent(PHCAgent):
         self.name = 'wolf'
         self.delta1 = delta1
         self.delta2 = delta2
-        self.avg_pi = defaultdict(partial(np.random.dirichlet, [1.0] * game.numactions(id_)))
-        self.count = defaultdict(int)
+        self.pi_ = defaultdict(partial(np.random.dirichlet, [1.0] * game.numactions(id_)))
+        self.count_pi = defaultdict(int)
 
     def done(self, id_, game):
+        self.pi_.clear()
+        self.count_pi.clear()
         super().done(id_, game)
-        self.avg_pi = defaultdict(partial(np.random.dirichlet, [1.0] * game.numactions(id_)))
-        self.count = defaultdict(int)
 
     def update_policy(self, s, a, id_, game):
-        self.count[s] += 1
-        self.avg_pi[s] += (self.pi[id_][s] - self.avg_pi[s]) / self.count[s]
-        if np.dot(self.pi[id_][s], self.Q[id_][s]) \
-                > np.dot(self.avg_pi[s], self.Q[id_][s]):
-            self.delta = self.delta1
-        else:
-            self.delta = self.delta2
+        self.count_pi[s] += 1
+        self.pi_[s] += (self.pi[id_][s] - self.pi_[s]) / self.count_pi[s]
+        self.delta = self.delta1 \
+            if np.dot(self.pi[id_][s], self.Q[id_][s]) \
+               > np.dot(self.pi_[s], self.Q[id_][s]) \
+            else self.delta2
         super().update_policy(s, a, id_, game)
 
 
@@ -215,12 +233,13 @@ class MinimaxQAgent(BaseQAgent):
     def __init__(self, id_, game):
         super().__init__('minimax', id_, game)
         self.solvers = []
-        self.Q = {0: defaultdict(partial(np.random.rand, game.numactions(0), game.numactions(1))),
-                  1: defaultdict(partial(np.random.rand, game.numactions(1), game.numactions(0)))}
+        self.Q = np.array([
+            defaultdict(partial(np.random.rand, game.numactions(0), game.numactions(1))),
+            defaultdict(partial(np.random.rand, game.numactions(1), game.numactions(0)))])
 
     def done(self, id_, game):
+        self.solvers.clear()
         super().done(id_, game)
-        self.solvers = []  # prepare for pickling
 
     def val(self, s, id_, game):
         Q = self.Q[id_][s]
@@ -229,19 +248,21 @@ class MinimaxQAgent(BaseQAgent):
 
     def update(self, s, a, o, r, sp, id_, game):
         Q = self.Q[id_][s]
-        v = self.val(sp, id_, game)
-        Q[a, o] += self.alpha(game.t) * (r + game.gamma * v - Q[a, o])
+        V = self.val(sp, id_, game)
+        Q[a, o] += self.alpha(game.t) * (r + game.gamma * V - Q[a, o])
         self.update_policy(s, a, id_, game)
         self.record_policy(s, id_, game)
 
-        if game.is_symmetric:
+        if game.is_symmetric and game.do_symmetry:
             self.do_symmetry(s, id_, game)
 
     def update_policy(self, s, a, id_, game):
         self.initialize_solvers()
         for solver, lib in self.solvers:
             try:
-                self.pi[id_][s] = MinimaxQAgent.lp_solve(self.Q[id_][s], solver, lib, id_, game)
+                self.pi[id_][s] = MinimaxQAgent.lp_solve(
+                    self.Q[id_][s], solver, lib, id_, game)
+                StationaryAgent.normalize(self.pi[id_][s])
             except Exception as e:
                 print('optimization using {} failed: {}'.format(solver, e))
                 continue

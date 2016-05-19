@@ -46,14 +46,17 @@ class PenaltyShoot(BiMatrixGame):
     def __init__(self, max_steps):
         super().__init__('penaltyshoot', 0.95, max_steps)
         self.set_matrix(
-            R=[[-1, 1], [1, -1]])
+            R=[[-1, 1],
+               [1, -1]])
 
 
 class RockPaperScissors(BiMatrixGame):
     def __init__(self, max_steps):
         super().__init__('rockpaperscissors', 0.95, max_steps)
         self.set_matrix(
-            R=[[0, -1, 1], [1, 0, -1], [-1, 1, 0]])
+            R=[[0, -1, 1],
+               [1, 0, -1],
+               [-1, 1, 0]])
 
 
 class RockPaperScissorsSpockLizard(BiMatrixGame):
@@ -71,14 +74,16 @@ class MatchingPennies(BiMatrixGame):
     def __init__(self, max_steps):
         super().__init__('matchingpennies', 0.95, max_steps)
         self.set_matrix(
-            R=[[1, -1], [-1, 1]])
+            R=[[1, -1],
+               [-1, 1]])
 
 
 class Inspection(BiMatrixGame):
     def __init__(self, max_steps):
         super().__init__('inspection', 0.95, max_steps)
         self.set_matrix(
-            R=[[-1, 1], [1, -1]])
+            R=[[-1, 1],
+               [1, -1]])
 
 
 class RandomGame(BiMatrixGame):

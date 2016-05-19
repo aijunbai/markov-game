@@ -19,7 +19,8 @@ class Game(object):
     def __init__(self, name, gamma, max_steps):
         self.name = name
         self.gamma = gamma
-        self.is_symmetric = False  # the game is symmetric for either side
+        self.is_symmetric = False
+        self.do_symmetry = False
         self.max_steps = max_steps
         self.t = 0
         self.players = {}
@@ -32,7 +33,8 @@ class Game(object):
         self.players[i] = player
 
     def configuration(self):
-        return '{}({}, {})'.format(self.name, self.players[0].name, self.players[1].name)
+        return '{}({}, {})'.format(
+            self.name, self.players[0].name, self.players[1].name)
 
     @abstractmethod
     def report(self):
