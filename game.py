@@ -25,9 +25,11 @@ class Game(object):
         self.t = 0
         self.players = {}
         self.state = None
+        self.new_episode = True
         self.verbose = False
         self.animation = False
         self.numplots = 0
+        self.wins = np.zeros(2, dtype=np.int)
 
     def add_player(self, i, player):
         self.players[i] = player
@@ -36,9 +38,12 @@ class Game(object):
         return '{}({}, {})'.format(
             self.name, self.players[0].name, self.players[1].name)
 
-    @abstractmethod
     def report(self):
-        pass
+        episodes = np.sum(self.wins)
+        print('step: {}, episode: {}'.format(self.t, episodes))
+        for i in range(2):
+            print('{}: win {} ({}%)'.format(
+                i, self.wins[i], self.wins[i] / episodes * 100))
 
     @abstractmethod
     def symmetric_state(self, state):
@@ -66,6 +71,7 @@ class Game(object):
 
         for t in range(self.max_steps):
             self.t = t
+            self.new_episode = False
 
             if self.verbose:
                 print('step: {}'.format(t))
@@ -92,5 +98,5 @@ class Game(object):
                 time.sleep(0.25)
 
     @abstractmethod
-    def simulate(self, actions):  # state, actions -> state, reward
+    def simulate(self, actions):  # state, actions -> state_prime, reward
         pass

@@ -34,12 +34,14 @@ class BiMatrixGame(game.Game):
         for p in range(2):
             print('matrix[{}]:'.format(p), pprint.pformat(self.bimatrix.matrix()[p]))
 
-    def simulate(self, actions):  # state, actions -> state, reward
-        return self.state, np.array(
-            [self.bimatrix.get_reward_for(i, actions) for i in range(2)])
+    def simulate(self, actions):
+        rewards = np.array([self.bimatrix.get_reward_for(i, actions) for i in range(2)])
+        if rewards[0] != rewards[1]:
+            self.wins[np.argmax(rewards)] += 1
+            self.new_episode = True
+            self.report()
 
-    def report(self):
-        pass
+        return self.state, rewards
 
 
 class PenaltyShoot(BiMatrixGame):

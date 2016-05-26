@@ -102,9 +102,6 @@ class Simulator(markovgame.Simulator):
             dtype=np.int8)
         self.center = self.bounds[:, 1] / 2
 
-        self.episodes = 2
-        self.wins = np.ones(2, dtype=np.int)
-
     def numactions(self, id_):
         return len(Action.__members__)
 
@@ -118,16 +115,9 @@ class Simulator(markovgame.Simulator):
         return Action.symmetric(action)
 
     def goal(self, i):
-        self.episodes += 1
-        self.wins[i] += 1
-        self.report()
-
-    def report(self):
-        print('goal @ t: {}'.format(self.game.t))
-        print('episodes: {}'.format(self.episodes))
-        for i in range(2):
-            print('{}: win {} ({}%)'.format(
-                i, self.wins[i], self.wins[i] / self.episodes * 100))
+        self.game.wins[i] += 1
+        self.game.new_episode = True
+        self.game.report()
 
     def initial_state(self):
         state = State(ball=random.randint(0, 1))
@@ -228,7 +218,7 @@ class LittmanSoccer(markovgame.MarkovGame):
 
 class HandCodedAgent(Agent):
     def __init__(self, id_, game):
-        super().__init__('littmansoccerhandcoded', id_, game)
+        super().__init__('littmansoccerhandcoded')
 
     def act(self, s, exploration, id_, game):
         if s.ball == id_:  # dribble

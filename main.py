@@ -82,6 +82,8 @@ def create_agent(agent_type, *args, **kwargs):
         return agent.WoLFAgent(*args, **kwargs)
     elif agent_type == 'minimaxq':
         return agent.MinimaxQAgent(*args, **kwargs)
+    elif agent_type == 'metacontrol':
+        return agent.MetaControlAgent(*args, **kwargs)
     elif agent_type == 'littmansoccerhandcoded':
         return littmansoccer.HandCodedAgent(*args, **kwargs)
     elif agent_type.endswith('pickle'):

@@ -7,6 +7,7 @@ from builtins import *
 import random
 import sys
 import os
+import math
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
 from functools import partial
@@ -26,7 +27,7 @@ __author__ = 'Aijun Bai'
 class Agent(object):
     __metaclass__ = ABCMeta
 
-    def __init__(self, name, id_, game):
+    def __init__(self, name):
         self.name = name
 
     def done(self, id_, game):
@@ -50,7 +51,7 @@ class Agent(object):
 
 class StationaryAgent(Agent):
     def __init__(self, id_, game, pi=None):
-        super().__init__('stationary', id_, game)
+        super().__init__('stationary')
         if pi is None:
             pi = np.random.dirichlet([1.0] * game.numactions(id_))
         self.pi = np.array(pi, dtype=np.double)
@@ -82,7 +83,7 @@ class RandomAgent(StationaryAgent):
 
 class BaseQAgent(Agent):
     def __init__(self, name, id_, game, N=10000, episilon=0.2):
-        super().__init__(name, id_, game)
+        super().__init__(name)
         self.episilon = episilon
         self.N = N
         self.Q = None
@@ -153,14 +154,15 @@ class BaseQAgent(Agent):
     def do_symmetry(self, s, id_, game):
         pass
 
+
 class QAgent(BaseQAgent):
     def __init__(self, id_, game):
         super().__init__('q', id_, game)
         self.R = defaultdict(partial(np.zeros, game.numactions(id_)))  # expected R(s, a)
         self.count_R = defaultdict(partial(np.zeros, game.numactions(id_)))
-        self.Q = np.array([
-            defaultdict(partial(np.random.rand, game.numactions(0))),
-            defaultdict(partial(np.random.rand, game.numactions(1)))])
+        self.Q = np.array(
+            [defaultdict(partial(np.random.rand, game.numactions(0))),
+             defaultdict(partial(np.random.rand, game.numactions(1)))])
 
     def done(self, id_, game):
         self.R.clear()
@@ -233,9 +235,9 @@ class MinimaxQAgent(BaseQAgent):
     def __init__(self, id_, game):
         super().__init__('minimax', id_, game)
         self.solvers = []
-        self.Q = np.array([
-            defaultdict(partial(np.random.rand, game.numactions(0), game.numactions(1))),
-            defaultdict(partial(np.random.rand, game.numactions(1), game.numactions(0)))])
+        self.Q = np.array(
+            [defaultdict(partial(np.random.rand, game.numactions(0), game.numactions(1))),
+             defaultdict(partial(np.random.rand, game.numactions(1), game.numactions(0)))])
 
     def done(self, id_, game):
         self.solvers.clear()
@@ -266,8 +268,7 @@ class MinimaxQAgent(BaseQAgent):
             except Exception as e:
                 print('optimization using {} failed: {}'.format(solver, e))
                 continue
-            else:
-                break
+            else: break
 
     def do_symmetry(self, s, id_, game):
         s2 = game.symmetric_state(s)
@@ -280,10 +281,8 @@ class MinimaxQAgent(BaseQAgent):
     def initialize_solvers(self):
         if not self.solvers:
             for lib in ['gurobipy', 'scipy.optimize', 'pulp']:
-                try:
-                    self.solvers.append((lib, importlib.import_module(lib)))
-                except:
-                    pass
+                try: self.solvers.append((lib, importlib.import_module(lib)))
+                except: pass
 
     @staticmethod
     def lp_solve(Q, solver, lib, id_, game):
@@ -334,6 +333,52 @@ class MinimaxQAgent(BaseQAgent):
             raise Exception('{} - negative probability error: {}'.format(solver, ret))
 
         return ret
+
+
+class MetaControlAgent(Agent):
+    def __init__(self, id_, game):
+        super().__init__('metacontrol')
+        self.agents = [QAgent(id_, game), MinimaxQAgent(id_, game)]
+        self.r = np.zeros(len(self.agents))
+        self.n = np.zeros(len(self.agents))
+
+        self.controller = None
+        self.step_within_episode = 0
+        self.cumulative_r = 0
+
+    def act(self, s, exploration, id_, game):
+        if self.controller is None:
+            self.controller = np.argmax([self.ucb(i, exploration) for i in range(len(self.agents))])
+        return self.agents[self.controller].act(s, exploration, id_, game)
+
+    def done(self, id_, game):
+        for agent in self.agents:
+            agent.done(id_, game)
+
+    def ucb(self, i, exploration):
+        if exploration:
+            if self.n[i] == 0:
+                return float('inf')
+            return self.r[i] + math.sqrt(2.0 * math.log(np.sum(self.n)) / self.n[i])
+        return self.r[i]
+
+    def update(self, s, a, o, r, sp, id_, game):
+        for agent in self.agents:
+            agent.update(s, a, o, r, sp, id_, game)
+
+        self.cumulative_r += math.pow(game.gamma, self.step_within_episode) * r
+        self.step_within_episode += 1
+
+        if game.new_episode:
+            self.n[self.controller] += 1
+            self.r[self.controller] += (self.cumulative_r - self.r[self.controller]) / self.n[self.controller]
+
+            self.controller = None
+            self.step_within_episode = 0
+            self.cumulative_r = 0
+
+            print('id: {}, n: {} ({}%), r: {}'.format(
+                id_, self.n, 100.0 * self.n / np.sum(self.n), self.r))
 
 
 # class KappaAgent(Agent):

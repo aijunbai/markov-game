@@ -70,5 +70,6 @@ nohup.out
 policy/
 policy_*/
 train/
+train_*/
 lab*.sh
 
