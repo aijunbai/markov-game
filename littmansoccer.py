@@ -73,10 +73,6 @@ class Action(IntEnum):
             raise Exception('unrecognized action: {}'.format(a))
 
     @classmethod
-    def symmetric(cls, a):
-        return a if a == cls.stand else cls.opposite(a)
-
-    @classmethod
     def opposite(cls, a):
         if a == cls.north:
             return cls.south
@@ -104,15 +100,6 @@ class Simulator(markovgame.Simulator):
 
     def numactions(self, id_):
         return len(Action.__members__)
-
-    def symmetric_state(self, state):
-        positions = self.bounds[:, 1] - state.positions
-        positions[[0, 1]] = positions[[1, 0]]
-        return State(ball=1 - state.ball, positions=positions)
-
-    @staticmethod
-    def symmetric_action(action):
-        return Action.symmetric(action)
 
     def goal(self, i):
         self.game.wins[i] += 1
@@ -204,16 +191,9 @@ class Simulator(markovgame.Simulator):
 class LittmanSoccer(markovgame.MarkovGame):
     def __init__(self, max_steps):
         super().__init__('littmansoccer', Simulator(self), 0.9, max_steps)
-        self.is_symmetric = True
 
     def numactions(self, id_):
         return self.simulator.numactions(id_)
-
-    def symmetric_state(self, state):
-        return self.simulator.symmetric_state(state)
-
-    def symmetric_action(self, action):
-        return self.simulator.symmetric_action(action)
 
 
 class HandCodedAgent(Agent):

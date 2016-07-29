@@ -19,8 +19,6 @@ class Game(object):
     def __init__(self, name, gamma, max_steps):
         self.name = name
         self.gamma = gamma
-        self.is_symmetric = False
-        self.do_symmetry = False
         self.max_steps = max_steps
         self.t = 0
         self.players = {}
@@ -46,21 +44,13 @@ class Game(object):
                 i, self.wins[i], self.wins[i] / episodes * 100))
 
     @abstractmethod
-    def symmetric_state(self, state):
-        pass
-
-    @abstractmethod
-    def symmetric_action(self, action):
-        pass
-
-    @abstractmethod
     def numactions(self, id_):
         pass
 
     def done(self):
         self.report()
         for j, player in self.players.items():
-            player.done(j, self)
+            player.done(self)
 
     @timeit
     def run(self, modes):
@@ -77,8 +67,8 @@ class Game(object):
                 print('step: {}'.format(t))
 
             actions = np.array(
-                [self.players[0].act(self.state, modes[0], 0, self),
-                 self.players[1].act(self.state, modes[1], 1, self)],
+                [self.players[0].act(self.state, modes[0], self),
+                 self.players[1].act(self.state, modes[1], self)],
                 dtype=np.int8)
             state_prime, rewards = self.simulate(actions)
 
@@ -90,7 +80,6 @@ class Game(object):
                         actions[1 - j],
                         rewards[j],
                         state_prime,
-                        j,
                         self)
 
             self.state = state_prime

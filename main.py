@@ -20,7 +20,6 @@ Options:
   -n, --numplots N         plot a number of policies for states [default: 0]
   -m, --max_steps N        run the simulation for M steps [default: 10k]
   -a, --animation          enable animation mode
-  -d, --do_symmetry        do symmetry for Q agent if possible
   -s, --seed SEED          use SEED as the random seed [default: 0]
   -v, --verbose            operate in verbose mode
 """
@@ -115,7 +114,6 @@ if __name__ == '__main__':
     names = {0: arguments['--left_name'], 1: arguments['--right_name']}
     game = arguments['<game>']
     animation = arguments['--animation']
-    do_symmetry = arguments['--do_symmetry']
     numplots = int(arguments['--numplots'])
     seed = int(arguments['--seed'])
     verbose = arguments['--verbose']
@@ -136,7 +134,7 @@ if __name__ == '__main__':
             if modes[j]:
                 save_agent(
                     G.players[j],
-                    'data/{}.pickle'.format(G.players[j].full_name(j, G)))
+                    'data/{}.pickle'.format(G.players[j].full_name(G)))
         exit()
 
     signal.signal(signal.SIGINT, done)
@@ -148,7 +146,6 @@ if __name__ == '__main__':
 
     G.verbose = verbose
     G.animation = animation
-    G.do_symmetry = do_symmetry
     G.numplots = numplots
     G.run(modes)
 
